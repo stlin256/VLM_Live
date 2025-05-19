@@ -32,7 +32,7 @@
 ## Introduction
 <a id="introduction"></a>
 
-This repository provides end-to-end code for dataset creation, model fine-tuning, and evaluation workflows. While specifically designed for [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct), the framework supports other Vision Language Models (VLMs) and is tailored for the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset on Kaggle, with potential for domain adaptation.
+This code repository provides the full process code from dataset creation, model fine-tuning, and evaluation workflows. While specifically designed for [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct), the framework supports other Vision Language Models (VLMs) and is tailored for the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset on Kaggle, with potential for domain adaptation.
 
 ### Potential of Small-Parameter VLMs in Specific Image Domains
 <a id="potential-of-small-parameter-vlms"></a>
