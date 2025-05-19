@@ -187,7 +187,7 @@ Run training:
 python fine_tune.py
 ```
 
-### Evaluation Protocols
+### Evaluation
 1. Base model full evaluation:
 ```bash
 python vlm_test.py
