@@ -59,20 +59,26 @@ The models show remarkable deployment efficiency:
 
 ### &emsp;1. `download_dataset.py`
 <a id="download_datasetpy"></a>
-Downloads the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset from Kaggle directly to your project root directory.
+&emsp;&emsp;&emsp;Downloads the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset from Kaggle directly to your project root directory.
 
 ### &emsp;2. `generate_train_json.py`
 <a id="generate_train_jsonpy"></a>
-Generates training JSON files from local data:
-1. Scans subfolders in dataset root as class labels
-2. Iterates through image files
-3. Combines question templates with class descriptions to generate Q&A pairs, including direct classification prompts
-4. Splits data (default: 80% train/20% test)
-5. Saves JSON files in script directory
+
+&emsp;&emsp;&emsp;Generates training JSON files from local data:
+
+&emsp;&emsp;&emsp;&emsp;1. Scans subfolders in dataset root as class labels
+
+&emsp;&emsp;&emsp;&emsp;2. Iterates through image files
+
+&emsp;&emsp;&emsp;&emsp;3. Combines question templates with class descriptions to generate Q&A pairs, including direct classification prompts
+
+&emsp;&emsp;&emsp;&emsp;4. Splits data (default: 80% train/20% test)
+
+&emsp;&emsp;&emsp;&emsp;5. Saves JSON files in script directory
 
 ### &emsp;3. `fine_tune.py`
 <a id="fine_tunepy"></a>
-Main fine-tuning script that produces trained models and training logs.
+&emsp;&emsp;&emsp;Main fine-tuning script that produces trained models and training logs.
 
 #### Key Parameters:
 ```python
@@ -95,11 +101,11 @@ logging_steps = 25
 
 ### &emsp;4. `vlm_benchmark_test_dataset.py`
 <a id="vlm_benchmark_test_datasetpy"></a>
-Evaluates VLM performance on the test dataset, reporting final accuracy metrics.
+&emsp;&emsp;&emsp;Evaluates VLM performance on the test dataset, reporting final accuracy metrics.
 
 ### &emsp;5. `vlm_test.py`
 <a id="vlm_testpy"></a>
-Full dataset evaluation script. Defaults to using `./SmolVLM-256M-Instruct` - modify `model_name` variable to evaluate fine-tuned models.
+&emsp;&emsp;&emsp;Full dataset evaluation script. Defaults to using `./SmolVLM-256M-Instruct` - modify `model_name` variable to evaluate fine-tuned models.
 
 ### Directory Structure:
 ```bash
