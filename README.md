@@ -2,6 +2,206 @@
 
 ### —— Finetune SmolVLM-Instruct for Image classification in specific fields
 
+<a href="#cn">中文介绍</a>
+
+---
+
+<!-- Navigation -->
+<ul>
+  <li><a href="#introduction">Introduction</a>
+    <ul>
+      <li><a href="#potential-of-small-parameter-vlms">Potential of Small-Parameter VLMs in Specific Image Domains</a></li>
+      <li><a href="#low-latency-deployment">Low-Latency Deployment with Consumer-Grade GPUs</a></li>
+    </ul>
+  </li>
+  <li><a href="#repository-structure">Repository Structure</a>
+    <ul>
+      <li><a href="#download_datasetpy">1. download_dataset.py</a></li>
+      <li><a href="#generate_train_jsonpy">2. generate_train_json.py</a></li>
+      <li><a href="#fine_tunepy">3. fine_tune.py</a></li>
+      <li><a href="#vlm_benchmark_test_datasetpy">4. vlm_benchmark_test_dataset.py</a></li>
+      <li><a href="#vlm_testpy">5. vlm_test.py</a></li>
+    </ul>
+  </li>
+  <li><a href="#usage-guide">Usage Guide</a></li>
+</ul>
+
+---
+
+## Introduction
+<a id="introduction"></a>
+
+This repository provides end-to-end code for dataset creation, model fine-tuning, and evaluation workflows. While specifically designed for [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct), the framework supports other Vision Language Models (VLMs) and is tailored for the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset on Kaggle, with potential for domain adaptation.
+
+### Potential of Small-Parameter VLMs in Specific Image Domains
+<a id="potential-of-small-parameter-vlms"></a>
+
+Fine-tuning improves classification accuracy from below **0.3** to over **0.9** on this dataset. When excluding the challenging `Electrical-Damage` class, accuracy reaches **0.98+**!
+
+### Low-Latency Deployment with Consumer-Grade GPUs
+<a id="low-latency-deployment"></a>
+
+Small-parameter VLMs demonstrate exceptional efficiency:
+- Minimum VRAM consumption: **4.5GB** during fine-tuning (with `batch_size=1`)
+- Scalable via `per_device_train_batch_size` and `per_device_eval_batch_size` adjustments in `fine_tune.py`
+
+The models show remarkable deployment efficiency:
+- [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct) requires only **1.2GB GPU memory** at `bfloat16` precision
+- Quantized to `INT4` format: just **0.6GB VRAM**
+
+---
+
+## Repository Structure
+<a id="repository-structure"></a>
+
+### &emsp;1. `download_dataset.py`
+<a id="download_datasetpy"></a>
+Downloads the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset from Kaggle directly to your project root directory.
+
+### &emsp;2. `generate_train_json.py`
+<a id="generate_train_jsonpy"></a>
+Generates training JSON files from local data:
+1. Scans subfolders in dataset root as class labels
+2. Iterates through image files
+3. Combines question templates with class descriptions to generate Q&A pairs, including direct classification prompts
+4. Splits data (default: 80% train/20% test)
+5. Saves JSON files in script directory
+
+### &emsp;3. `fine_tune.py`
+<a id="fine_tunepy"></a>
+Main fine-tuning script that produces trained models and training logs.
+
+#### Key Parameters:
+```python
+# Path configurations
+local_model_path = "./SmolVLM-256M-Instruct"  # Local model directory
+train_json_path = "solar_panel_train_dataset.json"  # Training JSON
+test_json_path = "solar_panel_test_dataset.json"  # Test JSON
+output_dir = "./SmolVLM-256M-Instruct-finetuned"  # Output directory
+
+# Training configuration
+equivalent_epochs_to_train = 1
+per_device_train_batch_size = 4
+per_device_eval_batch_size = 4
+gradient_accumulation_steps = 4
+warmup_steps = 50
+learning_rate = 3e-4
+weight_decay = 0.01
+logging_steps = 25
+```
+
+### &emsp;4. `vlm_benchmark_test_dataset.py`
+<a id="vlm_benchmark_test_datasetpy"></a>
+Evaluates VLM performance on the test dataset, reporting final accuracy metrics.
+
+### &emsp;5. `vlm_test.py`
+<a id="vlm_testpy"></a>
+Full dataset evaluation script. Defaults to using `./SmolVLM-256M-Instruct` - modify `model_name` variable to evaluate fine-tuned models.
+
+### Directory Structure:
+```bash
+├── download_dataset.py
+├── generate_train_json.py
+├── fine_tune.py
+├── vlm_benchmark_test_dataset.py
+├── vlm_test.py
+├── solar_panel_test_dataset.json
+├── solar_panel_train_dataset.json
+├── README.md
+├── requirements.txt
+├── SmolVLM-256M-Instruct/
+│   └── model_files
+├── SmolVLM-256M-Instruct-finetuned/
+│   └── finetuned_model_files
+└── Faulty_solar_panel/  # Dataset root
+    ├── Category/
+    └── Images.jpg
+```
+
+---
+
+## Usage Guide
+<a id="usage-guide"></a>
+
+### Environment Setup
+1. Create virtual environment:
+```bash
+conda create -n vlm python=3.10
+```
+2. Activate environment:
+```bash
+conda activate vlm
+```
+
+### Project Installation
+1. Clone repository:
+```bash
+git clone https://github.com/stlin256/VLM4Classification.git
+```
+2. Navigate to project directory:
+```bash
+cd VLM4Classification
+```
+3. Install dependencies:
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+**Pay attention to PyTorch installation!**
+
+### Data Preparation
+1. Download [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct) to `./SmolVLM-256M-Instruct`
+2. Download dataset:
+```bash
+python download_dataset.py
+```
+
+
+### Dataset Processing
+```bash
+python generate_train_json.py
+```
+
+### Training
+***Verify batch size settings (`per_device_train_batch_size`, `per_device_eval_batch_size`) before execution***
+```python
+# ~4.5GB VRAM
+per_device_train_batch_size = 1
+per_device_eval_batch_size = 1
+
+# ~14GB VRAM
+per_device_train_batch_size = 4
+per_device_eval_batch_size = 4
+```
+Run training:
+```bash
+python fine_tune.py
+```
+
+### Evaluation Protocols
+1. Base model full evaluation:
+```bash
+python vlm_test.py
+```
+
+2. Fine-tuned model test set evaluation:
+```bash
+python vlm_benchmark_test_dataset.py
+```
+
+3. Full evaluation of fine-tuned model:
+```bash
+# Modify model_name variable first
+python vlm_test.py
+```
+
+---
+<div id="cn"></div>
+
+# VLM for Image Classification
+
+### —— 微调SomlVLM模型用于图像分类问题
+
 ---
 
 <!-- 目录导航 -->
@@ -139,7 +339,7 @@ conda activate vlm
 
 1.从Github克隆本项目
 ```
-git clone xxxxxx
+git clone https://github.com/stlin256/VLM4Classification.git
 ```
 2.打开项目文件夹
 ```
