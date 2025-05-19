@@ -151,8 +151,7 @@ def main():
     if overall_processed_images > 0:
         overall_accuracy = overall_correct_predictions / overall_processed_images
         print(f"\n--- Overall Accuracy ---")
-        print(
-            f"Total Correct: {overall_correct_predictions}/{overall_processed_images}, Accuracy: {overall_accuracy:.4f}")
+        print(f"Total Correct: {overall_correct_predictions}/{overall_processed_images}, Accuracy: {overall_accuracy:.4f}")
     else:
         print("\nNo images were processed overall.")
 

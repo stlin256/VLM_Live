@@ -24,6 +24,7 @@
     </ul>
   </li>
   <li><a href="#usage-guide">Usage Guide</a></li>
+  <li><a href="#training-results-example">Training Results Example</a></li>
 </ul>
 
 ---
@@ -36,7 +37,9 @@ This repository provides end-to-end code for dataset creation, model fine-tuning
 ### Potential of Small-Parameter VLMs in Specific Image Domains
 <a id="potential-of-small-parameter-vlms"></a>
 
-Fine-tuning improves classification accuracy from below **0.3** to over **0.9** on this dataset. When excluding the challenging `Electrical-Damage` class, accuracy reaches **0.98+**!
+Fine-tuning improves classification accuracy from **0.2** to over **0.98+** on this dataset. 
+
+![Accuracy_Improvement](./Accuracy_Improvement.jpg "Accuracy_Improvement")
 
 ### Low-Latency Deployment with Consumer-Grade GPUs
 <a id="low-latency-deployment"></a>
@@ -194,6 +197,72 @@ python vlm_benchmark_test_dataset.py
 # Modify model_name variable first
 python vlm_test.py
 ```
+# Training Results Example
+<a id="training-results-example"></a>
+
+The following parameters were used for training:
+```python
+#generate_train_json.py
+
+    train_set_ratio = 0.8
+
+#finetune.py
+
+ #SFTConfig
+    equivalent_epochs_to_train = 1  
+    per_device_train_batch_size = 4
+    per_device_eval_batch_size = 4
+    gradient_accumulation_steps = 4
+    warmup_steps = 50
+    learning_rate = 3e-4
+    weight_decay = 0.01
+```
+
+Full evaluation before training:
+```python
+# vlm_test.py
+--- Category Accuracy Results ---
+type:Snow-Covered,correct__rate:0.8373983739837398
+type:Electrical-damage,correct__rate:0.34951456310679613
+type:Bird-drop,correct__rate:0.02617801047120419
+type:Clean,correct__rate:0.09326424870466321
+type:Dusty,correct__rate:0.08994708994708994
+type:Physical-Damage,correct__rate:0.028985507246376812
+--- Overall Accuracy ---
+Total Correct: 181/868, Accuracy: 0.2085
+```
+
+Full evaluation after training:
+```python
+# vlm_test.py 
+--- Category Accuracy Results ---
+type:Snow-Covered,correct__rate:1.0
+type:Electrical-damage,correct__rate:0.9320388349514563
+type:Bird-drop,correct__rate:0.9895287958115183
+type:Clean,correct__rate:0.9948186528497409
+type:Dusty,correct__rate:0.9788359788359788
+type:Physical-Damage,correct__rate:0.9855072463768116
+--- Overall Accuracy ---
+Total Correct: 853/868, Accuracy: 0.9827
+```
+
+Evaluation on test dataset after training:
+```python
+# vlm_benchmark_test_dataset.py
+
+--- Category Accuracy Results ---
+type:Electrical-damage,correct_rate:0.8571 (18/21)
+type:Snow-Covered,correct_rate:1.0000 (27/27)
+type:Dusty,correct_rate:0.9574 (45/47)
+type:Bird-drop,correct_rate:1.0000 (46/46)
+type:Clean,correct_rate:1.0000 (31/31)
+type:Physical-Damage,correct_rate:1.0000 (15/15)
+
+--- Overall Accuracy ---
+Total Correct: 182/187, Accuracy: 0.9733
+```
+
+---
 
 ---
 <div id="cn"></div>
@@ -222,6 +291,7 @@ python vlm_test.py
     </ul>
   </li>
   <li><a href="#使用方式">使用方式</a></li>
+  <li><a href="#训练结果示例">训练结果示例</a></li>
 </ul>
 
 ---
@@ -233,7 +303,9 @@ python vlm_test.py
 ### 展现了小参数量VLM在特定图像领域分类的潜力：
 <a id="展现了小参数量vlm在特定图像领域分类的潜力"></a>
 
- &emsp;&emsp;通过微调，模型在这个数据集上的分类精确度从小于 **0.3** 提升到了大于 **0.9**，如果去模型难以理解的`Electrical-Damage`类别，那么准确率可达**0.98**以上！
+ &emsp;&emsp;通过微调，模型在这个数据集上的分类精确度从 **0.2** 提升到了大于 **0.98**！
+
+![Accuracy_Improvement](./Accuracy_Improvement.jpg "Accuracy_Improvement")
 
 ### 小参数量VLM延迟低，性能要求低，在消费级GPU上轻松微调：
 <a id="小参数量vlm延迟低性能要求低在消费级gpu上轻松微调"></a>
@@ -276,7 +348,7 @@ python vlm_test.py
 
 #### &emsp;&emsp;&emsp;&emsp;参数说明：
 
-```
+```python
   #路径信息
     local_model_path = "./SmolVLM-256M-Instruct" #基座模型目录(为了加载方便，脚本从本地目录加载)
     train_json_path = "solar_panel_train_dataset.json" #训练集json
@@ -304,7 +376,7 @@ python vlm_test.py
 &emsp;&emsp;&emsp;此脚本默认使用的是`./SmolVLM-256M-Instruct`中的模型，如果你需要对微调好的模型进行评估，请你修改`model_name`变量。
 
 ### 完整的文件树：
-```
+```bash
 ├── download_dataset.py
 ├── generate_train_json.py
 ├── fine_tune.py
@@ -328,25 +400,25 @@ python vlm_test.py
 
 ### 配置虚拟环境
 1.创建虚拟环境
-```
+```bash
 conda create -n vlm python=3.10
 ```
 2.激活虚拟环境
-```
+```bash
 conda activate vlm
 ```
 ### 2.克隆本项目并安装依赖
 
 1.从Github克隆本项目
-```
+```bash
 git clone https://github.com/stlin256/VLM4Classification.git
 ```
 2.打开项目文件夹
-```
+```bash
 cd VLM4Classification
 ```
 3.安装依赖
-```
+```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -358,20 +430,20 @@ pip install -r requirements.txt
 2.下载数据集
 
 运行脚本
-```
+```bash
 python download_dataset.py
 ```
 如果报404错误，则请检查互联网连接或者代理设置。
 
 ### 4.创建训练所用的json文件
 运行脚本
-```
+```bash
 python generate_train_json.py
 ```
 
 ### 5.进行训练
 ***在运行前请检查批量大小设置，即`per_device_train_batch_size`和`per_device_eval_batch_size`变量。***
-```
+```python
 #占用约4.5G显存
 per_device_train_batch_size = 1
 per_device_eval_batch_size = 1
@@ -380,7 +452,7 @@ per_device_train_batch_size = 4
 per_device_eval_batch_size = 4
 ```
 运行脚本
-``` 
+``` bash
 python fine_tune.py
 ```
 在运行过程中，脚本会输出训练进度、剩余时间、损失、梯度、学习率等信息
@@ -403,3 +475,64 @@ python vlm_benchmark_test_dataset.py
 python vlm_test.py
 ```
 
+---
+# 训练结果示例
+使用以下参数进行训练：
+```python
+#generate_train_json.py
+
+    train_set_ratio = 0.8
+
+#finetune.py
+
+ #SFTConfig
+    equivalent_epochs_to_train = 1  
+    per_device_train_batch_size = 4
+    per_device_eval_batch_size = 4
+    gradient_accumulation_steps = 4
+    warmup_steps = 50
+    learning_rate = 3e-4
+    weight_decay = 0.01
+```
+训练前全量评估
+```python
+#vlm_test.py
+--- Category Accuracy Results ---
+type:Snow-Covered,correct__rate:0.8373983739837398
+type:Electrical-damage,correct__rate:0.34951456310679613
+type:Bird-drop,correct__rate:0.02617801047120419
+type:Clean,correct__rate:0.09326424870466321
+type:Dusty,correct__rate:0.08994708994708994
+type:Physical-Damage,correct__rate:0.028985507246376812
+--- Overall Accuracy ---
+Total Correct: 181/868, Accuracy: 0.2085
+```
+训练后全量评估
+```python
+#vlm_test.py
+--- Category Accuracy Results ---
+type:Snow-Covered,correct__rate:1.0
+type:Electrical-damage,correct__rate:0.9320388349514563
+type:Bird-drop,correct__rate:0.9895287958115183
+type:Clean,correct__rate:0.9948186528497409
+type:Dusty,correct__rate:0.9788359788359788
+type:Physical-Damage,correct__rate:0.9855072463768116
+--- Overall Accuracy ---
+Total Correct: 853/868, Accuracy: 0.9827
+```
+训练后在测试集上的评估
+```python
+#vlm_benchmark_test_dataset.py
+
+--- Category Accuracy Results ---
+type:Electrical-damage,correct_rate:0.8571 (18/21)
+type:Snow-Covered,correct_rate:1.0000 (27/27)
+type:Dusty,correct_rate:0.9574 (45/47)
+type:Bird-drop,correct_rate:1.0000 (46/46)
+type:Clean,correct_rate:1.0000 (31/31)
+type:Physical-Damage,correct_rate:1.0000 (15/15)
+
+--- Overall Accuracy ---
+Total Correct: 182/187, Accuracy: 0.9733
+```
+---

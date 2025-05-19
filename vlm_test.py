@@ -62,10 +62,13 @@ def get_subfolders_and_file_dict(root_folder="./Faulty_solar_panel"):
 def main():
     subfolders, file_dict = get_subfolders_and_file_dict("./Faulty_solar_panel")
     currencies = []
+    all_corrects = 0
+    all = 0
     for items in subfolders:
         print(f"Predicting: {items}")
         corrects = 0
         for entry in file_dict[items]:
+            all += 1
             get_type = chat(load_image(entry))
             print(f"True: {items}, Predicted: {get_type}",end="")
             if get_type.lower()[:4] == items.lower()[:4]:
@@ -73,8 +76,12 @@ def main():
                 print("   correct")
             else:
                 print("   incorrect")
+        all_corrects += corrects
         currencies.append(f"type:{items},correct__rate:{corrects/len(file_dict[items])}")
+    print("--- Category Accuracy Results ---")
     for final in currencies:
         print(final)
+    print("--- Overall Accuracy ---")
+    print(f"Total Correct: {all_corrects}/{all}, Accuracy: {all_corrects/all:.4f}")
 if __name__ == "__main__":
     main()
