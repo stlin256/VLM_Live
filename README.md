@@ -262,7 +262,7 @@ python vlm_test.py
 
 &emsp;&emsp;&emsp;&emsp;2.遍历子文件夹中的文件。
 
-&emsp;&emsp;&emsp;&emsp;3.将问题列表与各类别细节描述进行组合，生成Q&A对，同时固定生成一个仅包含类别名称回答的Q&A对。
+&emsp;&emsp;&emsp;&emsp;3.将问题列表与各类别细节描述进行组合，生成QA对，同时固定生成一个仅包含类别名称回答的QA对。
 
 &emsp;&emsp;&emsp;&emsp;4.打乱顺序，分割训练集和测试集(默认80%与20%)
 
