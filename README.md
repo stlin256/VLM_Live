@@ -147,7 +147,7 @@ conda activate vlm
 ```bash
 git clone https://github.com/stlin256/VLM4Classification.git
 ```
-2. Navigate to project directory:
+2. Open project directory:
 ```bash
 cd VLM4Classification
 ```
