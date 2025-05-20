@@ -424,11 +424,18 @@ git clone https://github.com/stlin256/VLM4Classification.git
 cd VLM4Classification
 ```
 3.安装依赖
+升级pip
 ```bash
 python -m pip install --upgrade pip
+```
+从[Pytorch官网](https://pytoch.org)复制适合你的环境的安装命令并运行，如：
+```
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
+安装其它依赖
+```bash
 pip install -r requirements.txt
 ```
-**务必注意torch的安装！**
 
 ### 3.下载所需的文件
 1.从[SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct  )下载模型文件，保存到`./SmolVLM-256M-Instruct`中。
