@@ -424,7 +424,8 @@ git clone https://github.com/stlin256/VLM4Classification.git
 cd VLM4Classification
 ```
 3.安装依赖
-升级pip
+
+建议先升级pip
 ```bash
 python -m pip install --upgrade pip
 ```
