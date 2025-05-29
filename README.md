@@ -154,9 +154,18 @@ cd VLM4Classification
 3. Install dependencies:
 ```bash
 python -m pip install --upgrade pip
+```
+
+Download Pytorch from [pytoch.org](https://pytoch.org), example：
+```
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
+
+Install other dependencies
+
+```bash
 pip install -r requirements.txt
 ```
-**Pay attention to PyTorch installation!**
 
 ### Data Preparation
 1. Download [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct) to `./SmolVLM-256M-Instruct`
