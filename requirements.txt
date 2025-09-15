@@ -1,12 +1,7 @@
-# Core VLM and Machine Learning Libraries
 torch
 transformers
 pillow
 numpy
-
-# Web Application and Server
 flask
 waitress
-
-# Video and Image Processing
 opencv-python
