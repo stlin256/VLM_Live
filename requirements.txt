@@ -1,6 +1,12 @@
-transformers~=4.51.3
-datasets~=3.6.0
-pillow~=10.4.0
-trl~=0.12.0
-kagglehub~=0.3.12
-tensorboard~=2.19.0
+# Core VLM and Machine Learning Libraries
+torch
+transformers
+pillow
+numpy
+
+# Web Application and Server
+flask
+waitress
+
+# Video and Image Processing
+opencv-python

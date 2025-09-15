@@ -1,6 +1,6 @@
-# VLM for Image Classification
+# Real-Time VLM Visual Analysis Web App
 
-### —— Finetune SmolVLM-Instruct for Image classification in specific fields
+### —— A web application for real-time visual analysis using Vision Language Models
 
 <a href="#cn">中文介绍</a>
 
@@ -10,21 +10,19 @@
 <ul>
   <li><a href="#introduction">Introduction</a>
     <ul>
-      <li><a href="#potential-of-small-parameter-vlms">Potential of Small-Parameter VLMs in Specific Image Domains</a></li>
-      <li><a href="#low-latency-deployment">Low-Latency Deployment with Consumer-Grade GPUs</a></li>
+      <li><a href="#features">Features</a></li>
     </ul>
   </li>
-  <li><a href="#repository-structure">Repository Structure</a>
+  <li><a href="#repository-structure">Repository Structure</a></li>
+  <li><a href="#usage-guide">Usage Guide</a>
     <ul>
-      <li><a href="#download_datasetpy">1. download_dataset.py</a></li>
-      <li><a href="#generate_train_jsonpy">2. generate_train_json.py</a></li>
-      <li><a href="#fine_tunepy">3. fine_tune.py</a></li>
-      <li><a href="#vlm_benchmark_test_datasetpy">4. vlm_benchmark_test_dataset.py</a></li>
-      <li><a href="#vlm_testpy">5. vlm_test.py</a></li>
+      <li><a href="#environment-setup">Environment Setup</a></li>
+      <li><a href="#installation">Installation</a></li>
+      <li><a href="#configuration">Configuration</a></li>
+      <li><a href="#running-the-application">Running the Application</a></li>
     </ul>
   </li>
-  <li><a href="#usage-guide">Usage Guide</a></li>
-  <li><a href="#training-results-example">Training Results Example</a></li>
+  <li><a href="#demo">Demo</a></li>
 </ul>
 
 ---
@@ -32,99 +30,29 @@
 ## Introduction
 <a id="introduction"></a>
 
-This code repository provides the full process code from dataset creation, model fine-tuning, and evaluation workflows. While specifically designed for [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct), the framework supports other Vision Language Models (VLMs) and is tailored for the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset on Kaggle, with potential for domain adaptation.
+This project provides a complete web application that leverages a Vision Language Model (VLM) to perform real-time analysis of visual content. The application can capture video from a webcam, a video file, or use a static image as input. It continuously processes the visual feed, generates textual descriptions using the VLM, and displays the video stream, the model's output, and the processing FPS on a responsive web interface.
 
-### Potential of Small-Parameter VLMs in Specific Image Domains
-<a id="potential-of-small-parameter-vlms"></a>
-
-Fine-tuning improves classification accuracy from **0.2** to over **0.98+** on this dataset. 
-
-![Accuracy_Improvement](./Accuracy_Improvement.jpg "Accuracy_Improvement")
-
-### Low-Latency Deployment with Consumer-Grade GPUs
-<a id="low-latency-deployment"></a>
-
-Small-parameter VLMs demonstrate exceptional efficiency:
-- Minimum VRAM consumption: **4.5GB** during fine-tuning (with `batch_size=1`)
-- Scalable via `per_device_train_batch_size` and `per_device_eval_batch_size` adjustments in `fine_tune.py`
-
-The models show remarkable deployment efficiency:
-- [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct) requires only **1.2GB GPU memory** at `bfloat16` precision
-- Quantized to `INT4` format: just **0.6GB VRAM**
+### Features
+<a id="features"></a>
+- **Multi-Source Input**: Supports real-time video capture from a webcam, looping playback from a video file (e.g., `.mp4`), or analysis of a static image.
+- **Real-Time VLM Inference**: Continuously sends frames to the VLM for analysis and description generation.
+- **Web Interface**: A clean, responsive web UI that displays the visual source, real-time FPS, and the VLM's textual output side-by-side.
+- **Asynchronous Processing**: Utilizes multithreading to handle frame capture and VLM inference in parallel, maximizing performance.
+- **Configurable**: Easily configurable through variables at the top of the main script (`realtime_vlm_app.py`).
 
 ---
 
 ## Repository Structure
 <a id="repository-structure"></a>
 
-### &emsp;1. `download_dataset.py`
-<a id="download_datasetpy"></a>
-&emsp;&emsp;&emsp;Downloads the [Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images) dataset from Kaggle directly to your project root directory.
-
-### &emsp;2. `generate_train_json.py`
-<a id="generate_train_jsonpy"></a>
-
-&emsp;&emsp;&emsp;Generates training JSON files from local data:
-
-&emsp;&emsp;&emsp;&emsp;1. Scans subfolders in dataset root as class labels
-
-&emsp;&emsp;&emsp;&emsp;2. Iterates through image files
-
-&emsp;&emsp;&emsp;&emsp;3. Combines question templates with class descriptions to generate Q&A pairs, including direct classification prompts
-
-&emsp;&emsp;&emsp;&emsp;4. Splits data (default: 80% train/20% test)
-
-&emsp;&emsp;&emsp;&emsp;5. Saves JSON files in script directory
-
-### &emsp;3. `fine_tune.py`
-<a id="fine_tunepy"></a>
-&emsp;&emsp;&emsp;Main fine-tuning script that produces trained models and training logs.
-
-#### Key Parameters:
-```python
-# Path configurations
-local_model_path = "./SmolVLM-256M-Instruct"  # Local model directory
-train_json_path = "solar_panel_train_dataset.json"  # Training JSON
-test_json_path = "solar_panel_test_dataset.json"  # Test JSON
-output_dir = "./SmolVLM-256M-Instruct-finetuned"  # Output directory
-
-# Training configuration
-equivalent_epochs_to_train = 1
-per_device_train_batch_size = 4
-per_device_eval_batch_size = 4
-gradient_accumulation_steps = 4
-warmup_steps = 50
-learning_rate = 3e-4
-weight_decay = 0.01
-logging_steps = 25
-```
-
-### &emsp;4. `vlm_benchmark_test_dataset.py`
-<a id="vlm_benchmark_test_datasetpy"></a>
-&emsp;&emsp;&emsp;Evaluates VLM performance on the test dataset, reporting final accuracy metrics.
-
-### &emsp;5. `vlm_test.py`
-<a id="vlm_testpy"></a>
-&emsp;&emsp;&emsp;Full dataset evaluation script. Defaults to using `./SmolVLM-256M-Instruct` - modify `model_name` variable to evaluate fine-tuned models.
-
-### Directory Structure:
 ```bash
-├── download_dataset.py
-├── generate_train_json.py
-├── fine_tune.py
-├── vlm_benchmark_test_dataset.py
-├── vlm_test.py
-├── solar_panel_test_dataset.json
-├── solar_panel_train_dataset.json
-├── README.md
-├── requirements.txt
-├── SmolVLM-256M-Instruct/
-│   └── model_files
-├── SmolVLM-256M-Instruct-finetuned/
-│   └── finetuned_model_files
-└── Faulty_solar_panel/  # Dataset root
-    ├── Category/
-    └── Images.jpg
+.
+├── realtime_vlm_app.py     # Main Flask application script
+├── templates/
+│   └── index.html          # HTML template for the web interface
+├── requirements.txt        # Python dependencies
+├── pic.jpg                 # Example image file
+└── README.md               # This file
 ```
 
 ---
@@ -133,429 +61,179 @@ logging_steps = 25
 <a id="usage-guide"></a>
 
 ### Environment Setup
-1. Create virtual environment:
-```bash
-conda create -n vlm python=3.10
-```
-2. Activate environment:
-```bash
-conda activate vlm
-```
+<a id="environment-setup"></a>
+It is recommended to use a virtual environment (e.g., conda or venv).
 
-### Project Installation
-1. Clone repository:
-```bash
-git clone https://github.com/stlin256/VLM4Classification.git
-```
-2. Open project directory:
-```bash
-cd VLM4Classification
-```
-3. Install dependencies:
-```bash
-python -m pip install --upgrade pip
-```
+1.  **Create a virtual environment** (example with conda):
+    ```bash
+    conda create -n vlm_webapp python=3.10
+    ```
+2.  **Activate the environment**:
+    ```bash
+    conda activate vlm_webapp
+    ```
 
-Download Pytorch from [pytoch.org](https://pytoch.org), example：
-```
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-```
+### Installation
+<a id="installation"></a>
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/stlin256/VLM_Live.git
+    cd VLM_Live
+    ```
+2.  **Install PyTorch**: Visit the [official PyTorch website](https://pytorch.org/get-started/locally/) and install a version compatible with your CUDA setup.
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **Download the VLM model**: Ensure you have the `SmolVLM-256M-Instruct` model files in a directory named `SmolVLM-256M-Instruct` at the project root.
 
-Install other dependencies
+### Configuration
+<a id="configuration"></a>
+Open `realtime_vlm_app.py` and modify the variables in the "Configuration" section as needed:
 
-```bash
-pip install -r requirements.txt
-```
-
-### Data Preparation
-1. Download [SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct) to `./SmolVLM-256M-Instruct`
-2. Download dataset:
-```bash
-python download_dataset.py
-```
-
-
-### Dataset Processing
-```bash
-python generate_train_json.py
-```
-
-### Training
-***Verify batch size settings (`per_device_train_batch_size`, `per_device_eval_batch_size`) before execution***
 ```python
-# ~4.5GB VRAM
-per_device_train_batch_size = 1
-per_device_eval_batch_size = 1
-
-# ~14GB VRAM
-per_device_train_batch_size = 4
-per_device_eval_batch_size = 4
-```
-Run training:
-```bash
-python fine_tune.py
+# --- Configuration ---
+USE_WEBCAM = False  # Set to True for webcam, False for file input
+INPUT_SOURCE = "a.mp4" # Path to your video or image file
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL_NAME = "./SmolVLM-256M-Instruct"
+PROMPT = "what you see? Answer in a word."
+# --- End Configuration ---
 ```
 
-### Evaluation
-1. Base model full evaluation:
-```bash
-python vlm_test.py
-```
-
-2. Fine-tuned model test set evaluation:
-```bash
-python vlm_benchmark_test_dataset.py
-```
-
-3. Full evaluation of fine-tuned model:
-```bash
-# Modify model_name variable first
-python vlm_test.py
-```
-# Training Results Example
-<a id="training-results-example"></a>
-
-The following parameters were used for training:
-```python
-#generate_train_json.py
-
-    train_set_ratio = 0.8
-
-#finetune.py
-
- #SFTConfig
-    equivalent_epochs_to_train = 1  
-    per_device_train_batch_size = 4
-    per_device_eval_batch_size = 4
-    gradient_accumulation_steps = 4
-    warmup_steps = 50
-    learning_rate = 3e-4
-    weight_decay = 0.01
-```
-
-Full evaluation before training:
-```python
-# vlm_test.py
---- Category Accuracy Results ---
-type:Snow-Covered,correct__rate:0.8373983739837398
-type:Electrical-damage,correct__rate:0.34951456310679613
-type:Bird-drop,correct__rate:0.02617801047120419
-type:Clean,correct__rate:0.09326424870466321
-type:Dusty,correct__rate:0.08994708994708994
-type:Physical-Damage,correct__rate:0.028985507246376812
---- Overall Accuracy ---
-Total Correct: 181/868, Accuracy: 0.2085
-```
-
-Full evaluation after training:
-```python
-# vlm_test.py 
---- Category Accuracy Results ---
-type:Snow-Covered,correct__rate:1.0
-type:Electrical-damage,correct__rate:0.9320388349514563
-type:Bird-drop,correct__rate:0.9895287958115183
-type:Clean,correct__rate:0.9948186528497409
-type:Dusty,correct__rate:0.9788359788359788
-type:Physical-Damage,correct__rate:0.9855072463768116
---- Overall Accuracy ---
-Total Correct: 853/868, Accuracy: 0.9827
-```
-
-Evaluation on test dataset after training:
-```python
-# vlm_benchmark_test_dataset.py
-
---- Category Accuracy Results ---
-type:Electrical-damage,correct_rate:0.8571 (18/21)
-type:Snow-Covered,correct_rate:1.0000 (27/27)
-type:Dusty,correct_rate:0.9574 (45/47)
-type:Bird-drop,correct_rate:1.0000 (46/46)
-type:Clean,correct_rate:1.0000 (31/31)
-type:Physical-Damage,correct_rate:1.0000 (15/15)
-
---- Overall Accuracy ---
-Total Correct: 182/187, Accuracy: 0.9733
-```
+### Running the Application
+<a id="running-the-application"></a>
+1.  **Start the server**:
+    ```bash
+    python realtime_vlm_app.py
+    ```
+2.  **Open your browser**: Navigate to `http://127.0.0.1:5000` to view the application.
 
 ---
 
+## Demo
+<a id="demo"></a>
+The web interface displays the video feed on the left and the analysis results (FPS and VLM output) on the right. The layout is responsive and maintains a 2/3 to 1/3 ratio between the video and text sections.
+
+![webpage](./webpage.png)
+
+---
 ---
 <div id="cn"></div>
 
-# VLM for Image Classification
+# 实时 VLM 视觉分析 Web 应用
 
-### —— 微调SomlVLM模型用于图像分类问题
+### —— 一个使用视觉语言模型进行实时视觉分析的Web应用
 
 ---
 
 <!-- 目录导航 -->
 <ul>
-  <li><a href="#介绍">介绍</a>
+  <li><a href="#中文介绍">介绍</a>
     <ul>
-      <li><a href="#展现了小参数量vlm在特定图像领域分类的潜力">展现了小参数量VLM在特定图像领域分类的潜力</a></li>
-      <li><a href="#小参数量vlm延迟低性能要求低在消费级gpu上轻松微调">小参数量VLM延迟低，性能要求低，在消费级GPU上轻松微调</a></li>
+      <li><a href="#功能特性">功能特性</a></li>
     </ul>
   </li>
-  <li><a href="#仓库文件介绍">仓库文件介绍</a>
+  <li><a href="#仓库结构">仓库结构</a></li>
+  <li><a href="#使用指南">使用指南</a>
     <ul>
-      <li><a href="#download_datasetpy">1. download_dataset.py</a></li>
-      <li><a href="#generate_train_jsonpy">2. generate_train_json.py</a></li>
-      <li><a href="#fine_tunepy">3. fine_tune.py</a></li>
-      <li><a href="#vlm_benchmark_test_datasetpy">4. vlm_benchmark_test_dataset.py</a></li>
-      <li><a href="#vlm_testpy">5. vlm_test.py</a></li>
+      <li><a href="#环境设置">环境设置</a></li>
+      <li><a href="#安装">安装</a></li>
+      <li><a href="#配置">配置</a></li>
+      <li><a href="#运行应用">运行应用</a></li>
     </ul>
   </li>
-  <li><a href="#使用方式">使用方式</a></li>
-  <li><a href="#训练结果示例">训练结果示例</a></li>
+  <li><a href="#演示">演示</a></li>
 </ul>
 
 ---
 
 ## 介绍
+<a id="中文介绍"></a>
 
- &emsp;&emsp;这个代码仓库提供了从创建数据集、微调、评估的全流程代码。适用于[SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct  )以及其它VLM，适用于Kaggle上的[Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images  )数据集，并可迁移使用。
- 
-### 展现了小参数量VLM在特定图像领域分类的潜力：
-<a id="展现了小参数量vlm在特定图像领域分类的潜力"></a>
+本项目提供了一个完整的Web应用程序，它利用视觉语言模型（VLM）对视觉内容进行实时分析。该应用可以从网络摄像头、视频文件捕获视频，或使用静态图像作为输入。它会持续处理视觉输入，使用VLM生成文本描述，并在一个响应式的Web界面上并排显示视频流、模型的输出以及处理的FPS。
 
- &emsp;&emsp;通过微调，模型在这个数据集上的分类精确度从 **0.2** 提升到了大于 **0.98**！
-
-![Accuracy_Improvement](./Accuracy_Improvement.jpg "Accuracy_Improvement")
-
-### 小参数量VLM延迟低，性能要求低，在消费级GPU上轻松微调：
-<a id="小参数量vlm延迟低性能要求低在消费级gpu上轻松微调"></a>
-
- &emsp;&emsp;小参数量VLM微调时对显存大小要求低，本仓库微调脚本最低**仅消耗4.5G显存**。(当`batch_size`被设置为1的时候)
- 
- &emsp;&emsp;你可以通过调整`fine_tune.py`中的`per_device_train_batch_size`和`per_device_eval_batch_size`来优化显存占用。
- 
- 小参数量VLM使用时对算力和显存大小要求低，对端侧部署十分友好，[SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct  )在以`bfloat16`精度下推理时只需1.2G显存，使用`INT4`量化时只需0.6G显存。
+### 功能特性
+<a id="功能特性"></a>
+- **多源输入**: 支持从网络摄像头进行实时视频捕获、循环播放视频文件（如 `.mp4`），或分析静态图像。
+- **实时VLM推理**: 持续将视频帧发送给VLM进行分析并生成描述。
+- **Web界面**: 一个简洁、响应式的Web UI，可并排显示视觉源、实时FPS和VLM的文本输出。
+- **异步处理**: 利用多线程并行处理帧捕获和VLM推理，以最大化性能。
+- **可配置**: 可通过主脚本 (`realtime_vlm_app.py`) 顶部的变量轻松进行配置。
 
 ---
-## 仓库文件介绍：
-<a id="仓库文件介绍"></a>
 
-### &emsp;1. `download_dataset.py` 
-<a id="download_datasetpy"></a>
-&emsp;&emsp;&emsp;用于从[Kaggle](https://www.kaggle.com  )下载[Solar panel clean and faulty images](https://www.kaggle.com/datasets/pythonafroz/solar-panel-clean-and-faulty-images  )数据集。
+## 仓库结构
+<a id="仓库结构"></a>
 
-&emsp;&emsp;&emsp;&emsp;直接运行即可，数据集文件夹会被下载到项目文件夹根目录
-
-### &emsp;2. `generate_train_json.py`
-<a id="generate_train_jsonpy"></a>
-&emsp;&emsp;&emsp;用于从本地文件创建用于训练的json文件，工作原理如下： 
-
-&emsp;&emsp;&emsp;&emsp;1.从数据集根文件夹开始，搜寻子文件夹，并以子文件夹名为类名
-
-&emsp;&emsp;&emsp;&emsp;2.遍历子文件夹中的文件。
-
-&emsp;&emsp;&emsp;&emsp;3.将问题列表与各类别细节描述进行组合，生成QA对，同时固定生成一个仅包含类别名称回答的QA对。
-
-&emsp;&emsp;&emsp;&emsp;4.打乱顺序，分割训练集和测试集(默认80%与20%)
-
-&emsp;&emsp;&emsp;&emsp;5.将json文件保存到脚本同级目录中。
-
-### &emsp;3. `fine_tune.py`
-<a id="fine_tunepy"></a>
-&emsp;&emsp;&emsp;用于进行模型微调
-
-&emsp;&emsp;&emsp;&emsp;此脚本将会执行模型的微调工作，并给出微调好的模型文件和记录到的日志。
-
-#### &emsp;&emsp;&emsp;&emsp;参数说明：
-
-```python
-  #路径信息
-    local_model_path = "./SmolVLM-256M-Instruct" #基座模型目录(为了加载方便，脚本从本地目录加载)
-    train_json_path = "solar_panel_train_dataset.json" #训练集json
-    test_json_path = "solar_panel_test_dataset.json" #测试集json
-    output_dir = "./SmolVLM-256M-Instruct-finetuned" #微调输出目录
-  #SFTConfig(主要部分)
-    equivalent_epochs_to_train = 1  #等效epoch数
-    per_device_train_batch_size = 4 #训练批量大小
-    per_device_eval_batch_size = 4 #评估批量大小
-    gradient_accumulation_steps = 4 #梯度累加
-    warmup_steps = 50 #热身步数
-    learning_rate = 3e-4 #初始学习率
-    weight_decay = 0.01 #权重衰减
-    logging_steps = 25 #日志记录间隔
-```
-
-### &emsp;4. `vlm_benchmark_test_dataset.py`
-<a id="vlm_benchmark_test_datasetpy"></a>
-&emsp;&emsp;&emsp;此脚本用于从测试集中评估vlm模型的性能，最终给出模型的正确率。
-
-### &emsp;5. `vlm_test.py`
-<a id="vlm_testpy"></a>
-&emsp;&emsp;&emsp;此脚本用于使用整个数据集对模型进行评估，最终给出模型的正确率。
-
-&emsp;&emsp;&emsp;此脚本默认使用的是`./SmolVLM-256M-Instruct`中的模型，如果你需要对微调好的模型进行评估，请你修改`model_name`变量。
-
-### 完整的文件树：
 ```bash
-├── download_dataset.py
-├── generate_train_json.py
-├── fine_tune.py
-├── vlm_benchmark_test_dataset.py
-├── vlm_test.py
-├── solar_panel_test_dataset.json
-├── solar_panel_train_dataset.json
-├── README.md
-├── requirements.txt
-├── SmolVLM-256M-Instruct
-│   └── model_files
-├── SmolVLM-256M-Instruct-finetuned
-│   └── finetuned model_files
-└── Faulty_solar_panel  #dataset root dir
-     ├── Category
-     └─── Images.jpg
-```
----
-## 使用方式：
-<a id="使用方式"></a>
-
-### 配置虚拟环境
-1.创建虚拟环境
-```bash
-conda create -n vlm python=3.10
-```
-2.激活虚拟环境
-```bash
-conda activate vlm
-```
-### 2.克隆本项目并安装依赖
-
-1.从Github克隆本项目
-```bash
-git clone https://github.com/stlin256/VLM4Classification.git
-```
-2.打开项目文件夹
-```bash
-cd VLM4Classification
-```
-3.安装依赖
-
-建议先升级pip
-```bash
-python -m pip install --upgrade pip
-```
-从[Pytorch官网](https://pytoch.org)复制适合你的环境的安装命令并运行，如：
-```
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-```
-安装其它依赖
-```bash
-pip install -r requirements.txt
-```
-
-### 3.下载所需的文件
-1.从[SmolVLM-256M-Instruct](https://huggingface.co/HuggingFaceTB/SmolVLM-256M-Instruct  )下载模型文件，保存到`./SmolVLM-256M-Instruct`中。
-
-2.下载数据集
-
-运行脚本
-```bash
-python download_dataset.py
-```
-如果报404错误，则请检查互联网连接或者代理设置。
-
-### 4.创建训练所用的json文件
-运行脚本
-```bash
-python generate_train_json.py
-```
-
-### 5.进行训练
-***在运行前请检查批量大小设置，即`per_device_train_batch_size`和`per_device_eval_batch_size`变量。***
-```python
-#占用约4.5G显存
-per_device_train_batch_size = 1
-per_device_eval_batch_size = 1
-#占用约14G显存
-per_device_train_batch_size = 4
-per_device_eval_batch_size = 4
-```
-运行脚本
-``` bash
-python fine_tune.py
-```
-在运行过程中，脚本会输出训练进度、剩余时间、损失、梯度、学习率等信息
-
-各变量的作用请参照前文
-### 6.评估（基于准确率）
-
-1)对原始模型进行完整评估
-```
-python vlm_test.py
-```
-2)使用测试集对微调模型进行评估
-```
-python vlm_benchmark_test_dataset.py
-```
-3)对微调模型进行完整评估
-
-将`model_name`变量的值修改为`"./SmolVLM-256M-Instruct-finetuned"`
-```
-python vlm_test.py
+.
+├── realtime_vlm_app.py     # 主Flask应用脚本
+├── templates/
+│   └── index.html          # Web界面的HTML模板
+├── requirements.txt        # Python依赖项
+├── pic.jpg                 # 示例图片
+└── README.md               # 本文件
 ```
 
 ---
-# 训练结果示例
-使用以下参数进行训练：
+
+## 使用指南
+<a id="使用指南"></a>
+
+### 环境设置
+<a id="环境设置"></a>
+建议使用虚拟环境（例如 conda 或 venv）。
+
+1.  **创建虚拟环境** (使用 conda 的示例):
+    ```bash
+    conda create -n vlm_webapp python=3.10
+    ```
+2.  **激活环境**:
+    ```bash
+    conda activate vlm_webapp
+    ```
+
+### 安装
+<a id="安装"></a>
+1.  **克隆仓库**:
+    ```bash
+    git clone https://github.com/stlin256/VLM_Live.git
+    cd VLM_Live
+    ```
+2.  **安装 PyTorch**: 访问 [PyTorch 官网](https://pytorch.org/get-started/locally/) 并安装与您的 CUDA 环境兼容的版本。
+3.  **安装依赖**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  **下载VLM模型**: 确保您已将 `SmolVLM-256M-Instruct` 模型文件放置在项目根目录下名为 `SmolVLM-256M-Instruct` 的文件夹中。
+
+### 配置
+<a id="配置"></a>
+打开 `realtime_vlm_app.py` 文件，并根据需要修改“Configuration”部分中的变量：
+
 ```python
-#generate_train_json.py
-
-    train_set_ratio = 0.8
-
-#finetune.py
-
- #SFTConfig
-    equivalent_epochs_to_train = 1  
-    per_device_train_batch_size = 4
-    per_device_eval_batch_size = 4
-    gradient_accumulation_steps = 4
-    warmup_steps = 50
-    learning_rate = 3e-4
-    weight_decay = 0.01
+# --- Configuration ---
+USE_WEBCAM = False  # 设置为 True 使用摄像头, False 使用文件输入
+INPUT_SOURCE = "a.mp4" # 你的视频或图片文件路径
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+MODEL_NAME = "./SmolVLM-256M-Instruct"
+PROMPT = "what you see? Answer in a word."
+# --- End Configuration ---
 ```
-训练前全量评估
-```python
-#vlm_test.py
---- Category Accuracy Results ---
-type:Snow-Covered,correct__rate:0.8373983739837398
-type:Electrical-damage,correct__rate:0.34951456310679613
-type:Bird-drop,correct__rate:0.02617801047120419
-type:Clean,correct__rate:0.09326424870466321
-type:Dusty,correct__rate:0.08994708994708994
-type:Physical-Damage,correct__rate:0.028985507246376812
---- Overall Accuracy ---
-Total Correct: 181/868, Accuracy: 0.2085
-```
-训练后全量评估
-```python
-#vlm_test.py
---- Category Accuracy Results ---
-type:Snow-Covered,correct__rate:1.0
-type:Electrical-damage,correct__rate:0.9320388349514563
-type:Bird-drop,correct__rate:0.9895287958115183
-type:Clean,correct__rate:0.9948186528497409
-type:Dusty,correct__rate:0.9788359788359788
-type:Physical-Damage,correct__rate:0.9855072463768116
---- Overall Accuracy ---
-Total Correct: 853/868, Accuracy: 0.9827
-```
-训练后在测试集上的评估
-```python
-#vlm_benchmark_test_dataset.py
 
---- Category Accuracy Results ---
-type:Electrical-damage,correct_rate:0.8571 (18/21)
-type:Snow-Covered,correct_rate:1.0000 (27/27)
-type:Dusty,correct_rate:0.9574 (45/47)
-type:Bird-drop,correct_rate:1.0000 (46/46)
-type:Clean,correct_rate:1.0000 (31/31)
-type:Physical-Damage,correct_rate:1.0000 (15/15)
+### 运行应用
+<a id="运行应用"></a>
+1.  **启动服务器**:
+    ```bash
+    python realtime_vlm_app.py
+    ```
+2.  **打开浏览器**: 访问 `http://127.0.0.1:5000` 查看应用。
 
---- Overall Accuracy ---
-Total Correct: 182/187, Accuracy: 0.9733
-```
 ---
+
+## 演示
+<a id="演示"></a>
+Web界面在左侧显示视频，右侧显示分析结果（FPS和VLM输出）。该布局是响应式的，并保持视频和文本部分之间 2/3 到 1/3 的宽度比例。
+
+![webpage](./webpage.png)
