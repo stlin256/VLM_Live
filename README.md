@@ -35,9 +35,9 @@ This project provides a complete web application that leverages a Vision Languag
 
 ### Features
 <a id="features"></a>
-- **Multi-Source Input**: Supports real-time video capture from a webcam, looping playback from a video file, or analysis of a static image.
-- **Dynamic Web UI Configuration**: Easily switch between webcam and file input, change the file path, adjust the model's `max_new_tokens`, and modify the `prompt` directly from the web page, with changes taking effect instantly.
-- **Real-Time VLM Inference**: Continuously sends frames to the VLM for analysis and description generation.
+- **Multi-Source Input**: Supports real-time video capture from a webcam, looping playback from a local video file, or connecting to network video streams (e.g., RTSP, HTTP, MJPEG).
+- **Dynamic Web UI Configuration**: Easily switch inputs, change paths/URLs, adjust `max_new_tokens`, and modify the `prompt` directly from the web page, with changes taking effect instantly.
+- **Optional Real-Time Translation**: The `llama.cpp` version includes an optional feature to translate the VLM's English output to Chinese in real-time using a secondary LLM.
 - **Web Interface**: A clean, responsive web UI that displays the visual source, real-time latency, and the VLM's textual output side-by-side.
 - **Asynchronous Processing**: Utilizes multithreading to handle frame capture and VLM inference in parallel, maximizing performance.
 
@@ -45,7 +45,8 @@ This project provides a complete web application that leverages a Vision Languag
 <a id="engine-versions"></a>
 This project includes two inference engine implementations:
 1.  **`realtime_vlm_app.py`**: Uses the standard **PyTorch and Hugging Face Transformers** library. It's easy to set up and is ideal for environments with powerful GPUs.
-2.  **`realtime_vlm_app_llamacpp.py`**: Uses **`llama.cpp`** for inference. This version offers significantly higher performance on CPUs and enables GPU offloading for low-resource environments, thanks to its C++ backend and GGUF quantization.
+2.  **`realtime_vlm_app_llamacpp.py`**: A high-performance version using **`llama.cpp`** for inference, optimized for CPU and low-resource GPU environments.
+3.  **`realtime_vlm_app_llamacpp_translate.py`**: An extension of the `llama.cpp` version that includes an optional feature to **translate** the VLM's English output to Chinese in real-time using a secondary LLM.
 
 ---
 
@@ -55,7 +56,8 @@ This project includes two inference engine implementations:
 ```bash
 .
 ├── realtime_vlm_app.py             # Main app (PyTorch version)
-├── realtime_vlm_app_llamacpp.py    # High-performance app (llama.cpp version)
+├── realtime_vlm_app_llamacpp.py    # High-performance app (llama.cpp version, no translation)
+├── realtime_vlm_app_llamacpp_translate.py # High-performance app with real-time translation
 ├── templates/
 │   └── index.html                  # HTML template for the web interface
 ├── requirements.txt                # Python dependencies
@@ -94,7 +96,9 @@ It is recommended to use a virtual environment (e.g., conda or venv).
     ```
 4.  **Download Models**:
     *   **For the PyTorch version**: Download the model files from [**SmolVLM2-256M-Video-Instruct**](https://huggingface.co/HuggingFaceTB/SmolVLM2-256M-Video-Instruct) and place them in a directory named `SmolVLM-256M-Instruct` at the project root.
-    *   **For the `llama.cpp` version**: Download the GGUF model and the multimodal projector file from [**SmolVLM2-256M-Video-Instruct-GGUF**](https://huggingface.co/ggml-org/SmolVLM2-256M-Video-Instruct-GGUF/tree/main). Place them in a subfolder, for example, `SmolVLM-256M-Instruct-GGUF`.
+    *   **For the `llama.cpp` version**:
+        *   Download the VLM GGUF model and the multimodal projector file from [**SmolVLM2-256M-Video-Instruct-GGUF**](https://huggingface.co/ggml-org/SmolVLM2-256M-Video-Instruct-GGUF/tree/main). Place them in a subfolder, e.g., `SmolVLM-256M-Instruct-GGUF`.
+        *   For the translation feature, download a translator model like [**Qwen3-0.6B-GGUF**](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF) and place it in its own folder, e.g., `Qwen3-0.6B-GGUF`.
 5.  **Prepare media files**: Place any video or image files you want to use (e.g., `pic.jpg`, `a.mp4`) in the project's root directory.
 
 ### Running the Application
@@ -103,9 +107,13 @@ It is recommended to use a virtual environment (e.g., conda or venv).
     ```bash
     python realtime_vlm_app.py
     ```
-- **To run the high-performance `llama.cpp` version**:
+- **To run the high-performance `llama.cpp` version (no translation)**:
     ```bash
     python realtime_vlm_app_llamacpp.py
+    ```
+- **To run the `llama.cpp` version with the real-time translation feature**:
+    ```bash
+    python realtime_vlm_app_llamacpp_translate.py
     ```
 After starting, the terminal will display the access link. Navigate to `http://127.0.0.1:5000` to view the application.
 
@@ -116,9 +124,10 @@ After starting, the terminal will display the access link. Navigate to `http://1
 Initial default settings are defined at the top of each `.py` script. However, all key parameters can be adjusted dynamically via the settings panel on the web page itself.
 
 - **Use Webcam**: Check this box to switch to the webcam feed.
-- **Video/Image Path**: Specify the path to a video or image file.
-- **Max Tokens**: Control the maximum length of the VLM's generated response.
-- **Prompt**: Change the question or instruction given to the VLM.
+- **Video/Image Path**: Specify the path to a local file or the URL of a network stream.
+- **Max Tokens**: Control the maximum length of the generated response.
+- **Prompt**: Change the instruction given to the VLM.
+- **Translate**: (Only available in the `llama.cpp` version) Check this box to translate the VLM's output to Chinese.
 
 Changes are applied instantly upon modification.
 
@@ -165,13 +174,13 @@ The web interface displays the video feed on the left and the analysis results o
 ## 介绍
 <a id="中文介绍"></a>
 
-本项目提供了一个完整的Web应用程序，它利用视觉语言模型（VLM）对视觉内容进行实时分析。该应用可以从网络摄像头、视频文件捕获视频，或使用静态图像作为输入。它会持续处理视觉输入，使用VLM生成文本描述，并在一个响应式的Web界面上并排显示视频流、模型的输出以及处理的延迟，所有主要设置都可以通过Web UI动态配置。
+本项目提供了一个完整的Web应用程序，它利用视觉语言模型（VLM）对视觉内容进行实时分析。该应用可以从网络摄像头、视频文件捕获视频，或使用静态图像作为输入。它会持续处理视觉输入，使用VLM生成文本描述，并在一个响应式的Web界面上并排显示视频流、模型的输出以及处理的延迟。所有主要设置都可以通过Web UI动态配置。
 
 ### 功能特性
 <a id="功能特性"></a>
-- **多源输入**: 支持从网络摄像头进行实时视频捕获、循环播放视频文件，或分析静态图像。
-- **动态Web UI配置**: 可在网页上轻松切换摄像头和文件输入、更改文件路径、调整模型的 `max_new_tokens` 以及修改 `prompt`，所有更改即时生效。
-- **实时VLM推理**: 持续将视频帧发送给VLM进行分析并生成描述。
+- **多源输入**: 支持从网络摄像头进行实时视频捕获、循环播放本地视频文件，或连接到网络视频流（例如 RTSP, HTTP, MJPEG 等）。
+- **动态Web UI配置**: 可在网页上轻松切换输入源、更改路径/URL、调整 `max_new_tokens` 以及修改 `prompt`，所有更改即时生效。
+- **可选的实时翻译**: `llama.cpp` 版本集成了一个可选功能，可以使用一个次级LLM将VLM的英文输出实时翻译为中文。
 - **Web界面**: 一个简洁、响应式的Web UI，可并排显示视觉源、实时延迟和VLM的文本输出。
 - **异步处理**: 利用多线程并行处理帧捕获和VLM推理，以最大化性能。
 
@@ -179,7 +188,8 @@ The web interface displays the video feed on the left and the analysis results o
 <a id="引擎版本"></a>
 本项目包含两种推理引擎的实现：
 1.  **`realtime_vlm_app.py`**: 使用标准的 **PyTorch 和 Hugging Face Transformers** 库。它易于设置，非常适合拥有强大GPU的环境。
-2.  **`realtime_vlm_app_llamacpp.py`**: 使用 **`llama.cpp`** 进行推理。得益于其C++后端和GGUF量化，此版本在CPU上提供显著更高的性能，并支持在资源有限的环境中进行GPU卸载。
+2.  **`realtime_vlm_app_llamacpp.py`**: 使用 **`llama.cpp`** 进行推理的高性能版本，为CPU和低资源GPU环境优化。
+3.  **`realtime_vlm_app_llamacpp_translate.py`**: `llama.cpp` 版本的扩展，集成了一个可选功能，可以使用一个次级LLM将VLM的英文输出**实时翻译**为中文。
 
 ---
 
@@ -189,7 +199,8 @@ The web interface displays the video feed on the left and the analysis results o
 ```bash
 .
 ├── realtime_vlm_app.py             # 主应用 (PyTorch 版本)
-├── realtime_vlm_app_llamacpp.py    # 高性能应用 (llama.cpp 版本)
+├── realtime_vlm_app_llamacpp.py    # 高性能应用 (llama.cpp 版本, 无翻译)
+├── realtime_vlm_app_llamacpp_translate.py # 带实时翻译功能的高性能应用
 ├── templates/
 │   └── index.html                  # Web界面的HTML模板
 ├── requirements.txt                # Python依赖项
@@ -228,7 +239,9 @@ The web interface displays the video feed on the left and the analysis results o
     ```
 4.  **下载模型**:
     *   **对于 PyTorch 版本**: 从 [**SmolVLM2-256M-Video-Instruct**](https://huggingface.co/HuggingFaceTB/SmolVLM2-256M-Video-Instruct) 下载模型文件，并将它们放置在项目根目录下名为 `SmolVLM-256M-Instruct` 的文件夹中。
-    *   **对于 `llama.cpp` 版本**: 从 [**SmolVLM2-256M-Video-Instruct-GGUF**](https://huggingface.co/ggml-org/SmolVLM2-256M-Video-Instruct-GGUF/tree/main) 下载GGUF格式的模型和多模态投影文件（mmproj）。将它们放置在一个子文件夹中，例如 `SmolVLM-256M-Instruct-GGUF`。
+    *   **对于 `llama.cpp` 版本**:
+        *   从 [**SmolVLM2-256M-Video-Instruct-GGUF**](https://huggingface.co/ggml-org/SmolVLM2-256M-Video-Instruct-GGUF/tree/main) 下载GGUF格式的VLM模型和多模态投影文件（mmproj）。将它们放置在一个子文件夹中，例如 `SmolVLM-256M-Instruct-GGUF`。
+        *   若要使用翻译功能，请下载一个翻译模型，例如 [**Qwen3-0.6B-GGUF**](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF)，并将其放置在自己的文件夹中，例如 `Qwen3-0.6B-GGUF`。
 5.  **准备媒体文件**: 将您希望使用的任何视频或图片文件（例如 `pic.jpg`, `a.mp4`）放置在项目根目录中。
 
 ### 运行应用
@@ -237,9 +250,13 @@ The web interface displays the video feed on the left and the analysis results o
     ```bash
     python realtime_vlm_app.py
     ```
-- **运行高性能的 `llama.cpp` 版本**:
+- **运行高性能的 `llama.cpp` 版本 (无翻译功能)**:
     ```bash
     python realtime_vlm_app_llamacpp.py
+    ```
+- **运行带实时翻译功能的 `llama.cpp` 版本**:
+    ```bash
+    python realtime_vlm_app_llamacpp_translate.py
     ```
 启动后，终端会显示应用的访问链接。请访问 `http://127.0.0.1:5000` 查看应用。
 
@@ -250,9 +267,10 @@ The web interface displays the video feed on the left and the analysis results o
 初始的默认设置在每个 `.py` 脚本的顶部定义。然而，所有关键参数都可以在网页本身的设置面板中动态调整。
 
 - **Use Webcam**: 勾选此框以切换到摄像头画面。
-- **Video/Image Path**: 指定位于项目目录中的视频或图片文件的路径。
-- **Max Tokens**: 控制VLM生成的回复的最大长度。
-- **Prompt**: 更改向VLM提出的问题或指令。
+- **Video/Image Path**: 指定本地文件路径或网络流URL。
+- **Max Tokens**: 控制生成的回复的最大长度。
+- **Prompt**: 更改向VLM提出的指令。
+- **Translate**: (仅在 `llama.cpp` 版本中可用) 勾选此框以将VLM的输出翻译为中文。
 
 所有更改在修改后会立刻生效。
 

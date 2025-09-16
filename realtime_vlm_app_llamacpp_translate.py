@@ -16,33 +16,41 @@ from llama_cpp.llama_chat_format import Llava15ChatHandler
 config = {
     "USE_WEBCAM": False,
     "INPUT_SOURCE": "pic.jpg",
-    "DEVICE": "cuda", # llama.cpp uses n_gpu_layers to control GPU offloading
-    "MODEL_NAME": "./SmolVLM-256M-Instruct-GGUF/SmolVLM2-256M-Video-Instruct-f16.gguf", # IMPORTANT: Path to the GGUF version of the model
-    "MMPROJ_MODEL_PATH": "./SmolVLM-256M-Instruct-GGUF/mmproj-SmolVLM2-256M-Video-Instruct-f16.gguf", # IMPORTANT: Path to the multimodal projector file
-    "PROMPT": "A one-sentence description.",
+    "MODEL_NAME": "./SmolVLM-256M-Instruct-GGUF/SmolVLM2-256M-Video-Instruct-f16.gguf",
+    "MMPROJ_MODEL_PATH": "./SmolVLM-256M-Instruct-GGUF/mmproj-SmolVLM2-256M-Video-Instruct-f16.gguf",
+    "TRANSLATOR_MODEL_NAME": "./Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf",
+    "PROMPT": "A one-sentence description of the image.",
+    "TRANSLATE_PROMPT": "/no_think翻译为中文：",
     "MAX_NEW_TOKENS": 32,
-    "N_GPU_LAYERS": -1 # Number of layers to offload to GPU. -1 for all, 0 for none. Adjust based on your VRAM.
+    "N_GPU_LAYERS": 20,
+    "TRANSLATOR_N_GPU_LAYERS": 10,
+    "TRANSLATE_ENABLED": False
 }
 config_lock = threading.Lock()
 
 app = Flask(__name__)
 
 # --- Llama.cpp VLM Initialization ---
-# Note: The chat handler for Llava models in llama.cpp is what enables multimodal input.
-print(f"Loading GGUF model from {config['MODEL_NAME']}...")
-# First, create the chat handler using the local projector file
+print(f"Loading VLM GGUF model from {config['MODEL_NAME']}...")
 chat_handler = Llava15ChatHandler(clip_model_path=config["MMPROJ_MODEL_PATH"], verbose=False)
-
-# Then, create the Llama instance with the handler
-llm = Llama(
+llm_vlm = Llama(
     model_path=config["MODEL_NAME"],
     chat_handler=chat_handler,
     n_ctx=2048,
     n_gpu_layers=config["N_GPU_LAYERS"],
     verbose=False
 )
-print("GGUF model loaded successfully.")
-# --- End Llama.cpp VLM Initialization ---
+print("VLM GGUF model loaded successfully.")
+
+# --- Llama.cpp Translator Initialization ---
+print(f"Loading Translator GGUF model from {config['TRANSLATOR_MODEL_NAME']}...")
+llm_translator = Llama(
+    model_path=config["TRANSLATOR_MODEL_NAME"],
+    n_ctx=512,
+    n_gpu_layers=config["TRANSLATOR_N_GPU_LAYERS"],
+    verbose=False
+)
+print("Translator GGUF model loaded successfully.")
 
 # --- Thread-safe data storage ---
 last_frame = None
@@ -55,12 +63,8 @@ vlm_lock = threading.Lock()
 capture_thread = None
 stop_capture_event = threading.Event()
 
-# --- Thread Management ---
-capture_thread = None
-stop_capture_event = threading.Event()
-
+# ... [create_error_image, pil_to_base64, suppress_stdout_stderr functions remain the same] ...
 def create_error_image(message, width=640, height=480):
-    """Creates a black image with an error message."""
     img_np = np.full((height, width, 3), 0, np.uint8)
     cv2.putText(img_np, message, (50, height // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     return img_np
@@ -72,101 +76,60 @@ def pil_to_base64(image):
 
 @contextlib.contextmanager
 def suppress_stdout_stderr():
-    """A context manager that redirects stdout and stderr to devnull"""
     with open(os.devnull, 'w') as fnull:
-        save_stdout = sys.stdout
-        save_stderr = sys.stderr
-        sys.stdout = fnull
-        sys.stderr = fnull
+        save_stdout, save_stderr = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = fnull, fnull
         try:
             yield
         finally:
-            sys.stdout = save_stdout
-            sys.stderr = save_stderr
+            sys.stdout, sys.stderr = save_stdout, save_stderr
 
 def capture_frames(stop_event):
     """Function to run in a separate thread for capturing frames."""
     global last_frame
-    
+    # ... [capture_frames logic remains the same] ...
     with config_lock:
         use_webcam = config["USE_WEBCAM"]
         input_source = config["INPUT_SOURCE"]
-
-    is_stream = not use_webcam and (input_source.lower().startswith('rtsp://') or input_source.lower().startswith('http://'))
+    is_stream = not use_webcam and (input_source.lower().startswith(('rtsp://', 'http://')))
     is_local_video = not use_webcam and input_source.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))
     is_video = is_stream or is_local_video
     frame_delay = 0.1
-
     video_capture = None
     static_image = None
-
-    if use_webcam:
-        video_capture = cv2.VideoCapture(0)
-        if not video_capture.isOpened():
-            print("Error: Could not open webcam.")
-            with frame_lock:
-                last_frame = create_error_image("Error: Could not open webcam.")
+    if use_webcam: video_capture = cv2.VideoCapture(0)
+    elif is_video: video_capture = cv2.VideoCapture(input_source)
+    else:
+        if os.path.exists(input_source): static_image = cv2.imread(input_source)
+        else:
+            with frame_lock: last_frame = create_error_image("Image not found")
             return
-    elif is_video:
-        if not is_stream and not os.path.exists(input_source):
-            print(f"Error: Video file not found at {input_source}")
-            with frame_lock:
-                last_frame = create_error_image(f"Video not found: {input_source}")
-            return
-        video_capture = cv2.VideoCapture(input_source)
-        # CRITICAL CHECK: Verify if the video source was opened successfully
-        if not video_capture.isOpened():
-            print(f"CRITICAL: OpenCV could not open the video source: {input_source}")
-            print("This might be due to missing codecs (FFmpeg) or network issues.")
-            with frame_lock:
-                last_frame = create_error_image(f"Error opening source")
-            return
+    if video_capture and not video_capture.isOpened():
+        with frame_lock: last_frame = create_error_image("Error opening source")
+        return
+    if is_local_video:
         fps = video_capture.get(cv2.CAP_PROP_FPS)
-        if fps > 0:
-            frame_delay = 1 / fps
-    else: # Image
-        if not os.path.exists(input_source):
-            print(f"Error: Image file not found at {input_source}")
-            with frame_lock:
-                last_frame = create_error_image(f"Image not found: {input_source}")
-            return
-        static_image = cv2.imread(input_source)
-        if static_image is None:
-            print(f"Error: Could not read image file at {input_source}")
-            with frame_lock:
-                last_frame = create_error_image(f"Error reading image: {input_source}")
-            return
-
+        if fps > 0: frame_delay = 1 / fps
     print("Capture thread started.")
     while not stop_event.is_set():
         frame = None
         if use_webcam or is_video:
             success, frame = video_capture.read()
             if not success:
-                if is_video:
-                    video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    continue
-                else:
-                    time.sleep(0.1)
-                    continue
-        else:
-            frame = static_image.copy()
-        
-        with frame_lock:
-            last_frame = frame
-        
+                if is_local_video: video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                else: time.sleep(0.1)
+                continue
+        else: frame = static_image.copy()
+        with frame_lock: last_frame = frame
         # For streams, we should not sleep, to clear the buffer and reduce latency
         if not is_stream:
             time.sleep(frame_delay)
-    
-    if video_capture:
-        video_capture.release()
+    if video_capture: video_capture.release()
     print("Capture thread stopped.")
 
-
 def vlm_inference():
-    """Function to run in a separate thread for VLM inference."""
-    global last_description, last_fps
+    """Runs VLM inference and then translates if enabled (serial execution)."""
+    global last_description, last_latency
     
     print("VLM inference thread started.")
     while True:
@@ -182,63 +145,66 @@ def vlm_inference():
         with config_lock:
             prompt = config["PROMPT"]
             max_tokens = config["MAX_NEW_TOKENS"]
+            translate_enabled = config["TRANSLATE_ENABLED"]
+            translate_prompt = config["TRANSLATE_PROMPT"]
 
         pil_image = Image.fromarray(cv2.cvtColor(frame_copy, cv2.COLOR_BGR2RGB))
         
         start_time = time.time()
         
-        # llama.cpp requires the image to be passed as a base64 string in the content
         data_url = f"data:image/jpeg;base64,{pil_to_base64(pil_image)}"
         
         with suppress_stdout_stderr():
-            response = llm.create_chat_completion(
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "image_url", "image_url": {"url": data_url}},
-                            {"type": "text", "text": prompt},
-                        ],
-                    }
-                ],
+            response = llm_vlm.create_chat_completion(
+                messages=[{"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_url}}, {"type": "text", "text": prompt}]}],
                 max_tokens=max_tokens
             )
         
         description = response['choices'][0]['message']['content']
-        
+
+        if translate_enabled:
+            full_translation_prompt = f"{translate_prompt}\n{description}"
+            with suppress_stdout_stderr():
+                trans_response = llm_translator.create_chat_completion(
+                    messages=[
+                        {"role": "system", "content": "You are a helpful translation assistant."},
+                        {"role": "user", "content": full_translation_prompt}
+                    ],
+                    max_tokens=max_tokens * 2 # Allow more tokens for translation
+                )
+            translated_text = trans_response['choices'][0]['message']['content'].strip()
+            # Post-process to remove <think> tags
+            final_text = translated_text.replace("<think>", "").replace("</think>", "").strip()
+        else:
+            final_text = description
+
         end_time = time.time()
-        processing_time = (end_time - start_time) * 1000 # Convert to milliseconds
+        processing_time = (end_time - start_time) * 1000
         
         with vlm_lock:
-            global last_description, last_latency
-            last_description = description
+            last_description = final_text
             last_latency = processing_time
 
-# --- Flask Routes (Identical to the original app) ---
+# --- Flask Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', engine='llamacpp')
 
 @app.route('/video_feed')
 def video_feed():
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 def gen_frames():
+    # ... [gen_frames logic remains the same] ...
     while True:
         frame_to_show = None
         with frame_lock:
-            if last_frame is None:
-                frame_to_show = create_error_image("Waiting for video stream...")
-            else:
-                frame_to_show = last_frame.copy()
-        
+            if last_frame is None: frame_to_show = create_error_image("Waiting for stream...")
+            else: frame_to_show = last_frame.copy()
         ret, buffer = cv2.imencode('.jpg', frame_to_show)
-        if not ret:
-            continue
-            
+        if not ret: continue
         frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
         time.sleep(0.03)
 
 @app.route('/vlm_data')
@@ -255,12 +221,12 @@ def get_settings():
 def update_settings():
     global capture_thread, stop_capture_event
     data = request.get_json()
-
     with config_lock:
         config["USE_WEBCAM"] = data.get('use_webcam', config["USE_WEBCAM"])
         config["INPUT_SOURCE"] = data.get('input_source', config["INPUT_SOURCE"])
         config["MAX_NEW_TOKENS"] = data.get('max_new_tokens', config["MAX_NEW_TOKENS"])
         config["PROMPT"] = data.get('prompt', config["PROMPT"])
+        config["TRANSLATE_ENABLED"] = data.get('translate_enabled', config["TRANSLATE_ENABLED"])
 
     if capture_thread and capture_thread.is_alive():
         stop_capture_event.set()

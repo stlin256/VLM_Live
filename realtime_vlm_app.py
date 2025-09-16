@@ -15,7 +15,7 @@ config = {
     "INPUT_SOURCE": "pic.jpg",
     "DEVICE": "cuda" if torch.cuda.is_available() else "cpu",
     "MODEL_NAME": "./SmolVLM-256M-Instruct",
-    "PROMPT": "what do you see?",
+    "PROMPT": "A one-sentence description.",
     "MAX_NEW_TOKENS": 32
 }
 config_lock = threading.Lock()
@@ -61,7 +61,9 @@ def capture_frames(stop_event):
         use_webcam = config["USE_WEBCAM"]
         input_source = config["INPUT_SOURCE"]
 
-    is_video = not use_webcam and input_source.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))
+    is_stream = not use_webcam and (input_source.lower().startswith('rtsp://') or input_source.lower().startswith('http://'))
+    is_local_video = not use_webcam and input_source.lower().endswith(('.mp4', '.avi', '.mov', '.mkv'))
+    is_video = is_stream or is_local_video
     frame_delay = 0.1
 
     video_capture = None
@@ -75,12 +77,19 @@ def capture_frames(stop_event):
                 last_frame = create_error_image("Error: Could not open webcam.")
             return
     elif is_video:
-        if not os.path.exists(input_source):
+        if not is_stream and not os.path.exists(input_source):
             print(f"Error: Video file not found at {input_source}")
             with frame_lock:
                 last_frame = create_error_image(f"Video not found: {input_source}")
             return
         video_capture = cv2.VideoCapture(input_source)
+        # CRITICAL CHECK: Verify if the video source was opened successfully
+        if not video_capture.isOpened():
+            print(f"CRITICAL: OpenCV could not open the video source: {input_source}")
+            print("This might be due to missing codecs (FFmpeg) or network issues.")
+            with frame_lock:
+                last_frame = create_error_image(f"Error opening source")
+            return
         fps = video_capture.get(cv2.CAP_PROP_FPS)
         if fps > 0:
             frame_delay = 1 / fps
@@ -172,7 +181,7 @@ def vlm_inference():
 # --- Flask Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', engine='torch')
 
 @app.route('/video_feed')
 def video_feed():

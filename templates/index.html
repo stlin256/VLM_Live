@@ -3,12 +3,25 @@
 <head>
     <title>Real-time VLM Object Recognition</title>
     <style>
-        body { font-family: sans-serif; margin: 2em; background-color: #f4f4f4; color: #333; }
+        html { height: 100%; }
+        body {
+            font-family: sans-serif;
+            margin: 0; /* Reset margin for full height */
+            background-color: #f4f4f4;
+            color: #333;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
         h1 { text-align: center; color: #1a1a1a; }
+        .content-wrapper {
+            flex: 1 0 auto; /* Allow content to grow and shrink */
+            padding: 2em; /* Add back padding removed from body */
+        }
         #container {
             display: flex;
             justify-content: center;
-            align-items: stretch; 
+            align-items: stretch;
             gap: 2em;
             margin-top: 2em;
         }
@@ -49,11 +62,12 @@
             border: 1px solid #eee;
         }
         footer {
+            flex-shrink: 0; /* Prevent footer from shrinking */
             text-align: center;
-            margin-top: 3em;
-            padding-top: 1em;
+            padding: 1.5em 0;
             border-top: 1px solid #ddd;
             color: #777;
+            background-color: #fff;
         }
         #settings-container {
             display: flex;
@@ -82,35 +96,41 @@
     </style>
 </head>
 <body>
-    <h1>Real-time VLM Object Recognition</h1>
-    <div id="container">
-        <div id="video-container">
-            <img id="video-stream" src="{{ url_for('video_feed') }}">
+    <div class="content-wrapper">
+        <h1>Real-time VLM Object Recognition</h1>
+        <div id="container">
+            <div id="video-container">
+                <img id="video-stream" src="{{ url_for('video_feed') }}">
+            </div>
+            <div id="data-container">
+                <h2>Results</h2>
+                <p><strong>Latency:</strong> <span id="latency">Loading...</span> ms</p>
+                <p><strong>VLM Output:</strong></p>
+                <div id="description">Loading...</div>
+            </div>
         </div>
-        <div id="data-container">
-            <h2>Results</h2>
-            <p><strong>Latency:</strong> <span id="latency">Loading...</span> ms</p>
-            <p><strong>VLM Output:</strong></p>
-            <div id="description">Loading...</div>
-        </div>
-    </div>
 
-    <div id="settings-container">
-        <div class="setting-item">
-            <label for="use-webcam">Use Webcam:</label>
-            <input type="checkbox" id="use-webcam">
-        </div>
-        <div class="setting-item">
-            <label for="input-source">Video/Image Path:</label>
-            <input type="text" id="input-source">
-        </div>
-        <div class="setting-item">
-            <label for="max-tokens">Max Tokens:</label>
-            <input type="number" id="max-tokens" min="1" max="128">
-        </div>
-        <div class="setting-item">
-            <label for="prompt">Prompt:</label>
-            <input type="text" id="prompt">
+        <div id="settings-container">
+            <div class="setting-item">
+                <label for="use-webcam">Use Webcam:</label>
+                <input type="checkbox" id="use-webcam">
+            </div>
+            <div class="setting-item">
+                <label for="input-source">Video/Image Path:</label>
+                <input type="text" id="input-source">
+            </div>
+            <div class="setting-item">
+                <label for="max-tokens">Max Tokens:</label>
+                <input type="number" id="max-tokens" min="1" max="128">
+            </div>
+            <div class="setting-item">
+                <label for="prompt">Prompt:</label>
+                <input type="text" id="prompt">
+            </div>
+            <div class="setting-item" id="translate-container" style="display: none;">
+                <label for="translate-enabled">Translate:</label>
+                <input type="checkbox" id="translate-enabled">
+            </div>
         </div>
     </div>
 
@@ -123,6 +143,8 @@
         const inputSourceElem = document.getElementById('input-source');
         const maxTokensElem = document.getElementById('max-tokens');
         const promptElem = document.getElementById('prompt');
+        const translateContainer = document.getElementById('translate-container');
+        const translateEnabledElem = document.getElementById('translate-enabled');
         const videoStreamElem = document.getElementById('video-stream');
 
         function applySettings() {
@@ -130,7 +152,8 @@
                 use_webcam: useWebcamElem.checked,
                 input_source: inputSourceElem.value,
                 max_new_tokens: parseInt(maxTokensElem.value, 10),
-                prompt: promptElem.value
+                prompt: promptElem.value,
+                translate_enabled: translateEnabledElem.checked
             };
 
             fetch('/update_settings', {
@@ -159,6 +182,13 @@
                     inputSourceElem.value = data.INPUT_SOURCE;
                     maxTokensElem.value = data.MAX_NEW_TOKENS;
                     promptElem.value = data.PROMPT;
+                    
+                    // Show and set translate checkbox only for llamacpp
+                    if ('{{ engine }}' === 'llamacpp') {
+                        translateContainer.style.display = 'flex';
+                        translateEnabledElem.checked = data.TRANSLATE_ENABLED;
+                    }
+                    
                     toggleInputSource();
                 })
                 .catch(error => console.error('Error fetching settings:', error));
@@ -174,6 +204,7 @@
         inputSourceElem.addEventListener('change', applySettings);
         maxTokensElem.addEventListener('change', applySettings);
         promptElem.addEventListener('change', applySettings);
+        translateEnabledElem.addEventListener('change', applySettings);
 
         function updateVlmData() {
             fetch('/vlm_data')
