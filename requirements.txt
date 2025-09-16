@@ -5,3 +5,4 @@ numpy
 flask
 waitress
 opencv-python
+llama-cpp-python

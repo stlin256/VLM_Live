@@ -88,8 +88,8 @@
             <img id="video-stream" src="{{ url_for('video_feed') }}">
         </div>
         <div id="data-container">
-            <h2>Analysis Results</h2>
-            <p><strong>FPS:</strong> <span id="fps">Loading...</span></p>
+            <h2>Results</h2>
+            <p><strong>Latency:</strong> <span id="latency">Loading...</span> ms</p>
             <p><strong>VLM Output:</strong></p>
             <div id="description">Loading...</div>
         </div>
@@ -115,7 +115,7 @@
     </div>
 
     <footer>
-        <p>&copy; STLIN256</p>
+        <p>&copy; <a href="https://github.com/stlin256/VLM_Live" target="_blank">STLIN256</a></p>
     </footer>
 
     <script>
@@ -179,7 +179,7 @@
             fetch('/vlm_data')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('fps').innerText = data.fps;
+                    document.getElementById('latency').innerText = data.latency;
                     document.getElementById('description').innerText = data.description;
                 })
                 .catch(error => console.error('Error fetching VLM data:', error));

@@ -1,36 +1,48 @@
 import os
 import cv2
-import torch
 import time
 import threading
+import base64
+from io import BytesIO
+import contextlib
+import sys
 from flask import Flask, render_template, Response, jsonify, request
-from transformers import AutoProcessor, AutoModelForVision2Seq
 from PIL import Image
 import numpy as np
+from llama_cpp import Llama
+from llama_cpp.llama_chat_format import Llava15ChatHandler
 
 # --- Global Configuration Store ---
-# These will be the default values, but they can be changed dynamically via the API
 config = {
     "USE_WEBCAM": False,
     "INPUT_SOURCE": "pic.jpg",
-    "DEVICE": "cuda" if torch.cuda.is_available() else "cpu",
-    "MODEL_NAME": "./SmolVLM-256M-Instruct",
-    "PROMPT": "what do you see?",
-    "MAX_NEW_TOKENS": 32
+    "DEVICE": "cuda", # llama.cpp uses n_gpu_layers to control GPU offloading
+    "MODEL_NAME": "./SmolVLM-256M-Instruct-GGUF/SmolVLM2-256M-Video-Instruct-f16.gguf", # IMPORTANT: Path to the GGUF version of the model
+    "MMPROJ_MODEL_PATH": "./SmolVLM-256M-Instruct-GGUF/mmproj-SmolVLM2-256M-Video-Instruct-f16.gguf", # IMPORTANT: Path to the multimodal projector file
+    "PROMPT": "Describe what you see",
+    "MAX_NEW_TOKENS": 32,
+    "N_GPU_LAYERS": -1 # Number of layers to offload to GPU. -1 for all, 0 for none. Adjust based on your VRAM.
 }
 config_lock = threading.Lock()
 
 app = Flask(__name__)
 
-# --- VLM Initialization ---
-print(f"Loading model from {config['MODEL_NAME']}...")
-processor = AutoProcessor.from_pretrained(config['MODEL_NAME'])
-model = AutoModelForVision2Seq.from_pretrained(
-    config['MODEL_NAME'],
-    torch_dtype=torch.bfloat16,
-).to(config['DEVICE']).eval()
-print("Model loaded successfully.")
-# --- End VLM Initialization ---
+# --- Llama.cpp VLM Initialization ---
+# Note: The chat handler for Llava models in llama.cpp is what enables multimodal input.
+print(f"Loading GGUF model from {config['MODEL_NAME']}...")
+# First, create the chat handler using the local projector file
+chat_handler = Llava15ChatHandler(clip_model_path=config["MMPROJ_MODEL_PATH"], verbose=False)
+
+# Then, create the Llama instance with the handler
+llm = Llama(
+    model_path=config["MODEL_NAME"],
+    chat_handler=chat_handler,
+    n_ctx=2048,
+    n_gpu_layers=config["N_GPU_LAYERS"],
+    verbose=False
+)
+print("GGUF model loaded successfully.")
+# --- End Llama.cpp VLM Initialization ---
 
 # --- Thread-safe data storage ---
 last_frame = None
@@ -52,6 +64,25 @@ def create_error_image(message, width=640, height=480):
     img_np = np.full((height, width, 3), 0, np.uint8)
     cv2.putText(img_np, message, (50, height // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     return img_np
+
+def pil_to_base64(image):
+    buffered = BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode('utf-8')
+
+@contextlib.contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(os.devnull, 'w') as fnull:
+        save_stdout = sys.stdout
+        save_stderr = sys.stderr
+        sys.stdout = fnull
+        sys.stderr = fnull
+        try:
+            yield
+        finally:
+            sys.stdout = save_stdout
+            sys.stderr = save_stderr
 
 def capture_frames(stop_event):
     """Function to run in a separate thread for capturing frames."""
@@ -145,31 +176,34 @@ def vlm_inference():
         
         start_time = time.time()
         
-        messages = [{"role": "user", "content": [{"type": "image"}, {"type": "text", "text": prompt}]}]
-        prompt_template = processor.apply_chat_template(messages, add_generation_prompt=True)
-        inputs = processor(text=prompt_template, images=[pil_image], return_tensors="pt").to(config["DEVICE"])
-
-        with torch.no_grad():
-            generated_ids = model.generate(**inputs, max_new_tokens=max_tokens, do_sample=True, temperature=0.6)
+        # llama.cpp requires the image to be passed as a base64 string in the content
+        data_url = f"data:image/jpeg;base64,{pil_to_base64(pil_image)}"
         
-        generated_texts = processor.batch_decode(generated_ids, skip_special_tokens=True)
+        with suppress_stdout_stderr():
+            response = llm.create_chat_completion(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image_url", "image_url": {"url": data_url}},
+                            {"type": "text", "text": prompt},
+                        ],
+                    }
+                ],
+                max_tokens=max_tokens
+            )
         
-        raw_response = generated_texts[0]
-        assistant_marker = "Assistant:"
-        if assistant_marker in raw_response:
-            response = raw_response.split(assistant_marker, 1)[-1].strip()
-        else:
-            response = raw_response.split("ASSISTANT:")[-1].split("assistant:")[-1].strip()
+        description = response['choices'][0]['message']['content']
         
         end_time = time.time()
         processing_time = (end_time - start_time) * 1000 # Convert to milliseconds
         
         with vlm_lock:
             global last_description, last_latency
-            last_description = response
+            last_description = description
             last_latency = processing_time
 
-# --- Flask Routes ---
+# --- Flask Routes (Identical to the original app) ---
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -217,12 +251,10 @@ def update_settings():
         config["MAX_NEW_TOKENS"] = data.get('max_new_tokens', config["MAX_NEW_TOKENS"])
         config["PROMPT"] = data.get('prompt', config["PROMPT"])
 
-    # Stop the old capture thread
     if capture_thread and capture_thread.is_alive():
         stop_capture_event.set()
-        capture_thread.join() # Wait for the thread to finish
+        capture_thread.join()
 
-    # Start a new capture thread with the updated settings
     stop_capture_event.clear()
     capture_thread = threading.Thread(target=capture_frames, args=(stop_capture_event,), daemon=True)
     capture_thread.start()
@@ -232,11 +264,9 @@ def update_settings():
 if __name__ == '__main__':
     from waitress import serve
     
-    # Start the initial capture thread
     capture_thread = threading.Thread(target=capture_frames, args=(stop_capture_event,), daemon=True)
     capture_thread.start()
 
-    # Start the VLM inference thread (it will run continuously)
     vlm_thread = threading.Thread(target=vlm_inference, daemon=True)
     vlm_thread.start()
     
