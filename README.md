@@ -18,10 +18,10 @@
     <ul>
       <li><a href="#environment-setup">Environment Setup</a></li>
       <li><a href="#installation">Installation</a></li>
-      <li><a href="#configuration">Configuration</a></li>
       <li><a href="#running-the-application">Running the Application</a></li>
     </ul>
   </li>
+  <li><a href="#configuration">Configuration</a></li>
   <li><a href="#demo">Demo</a></li>
 </ul>
 
@@ -30,15 +30,15 @@
 ## Introduction
 <a id="introduction"></a>
 
-This project provides a complete web application that leverages a Vision Language Model (VLM) to perform real-time analysis of visual content. The application can capture video from a webcam, a video file, or use a static image as input. It continuously processes the visual feed, generates textual descriptions using the VLM, and displays the video stream, the model's output, and the processing FPS on a responsive web interface.
+This project provides a complete web application that leverages a Vision Language Model (VLM) to perform real-time analysis of visual content. The application can capture video from a webcam, a video file, or use a static image as input. It continuously processes the visual feed, generates textual descriptions using the VLM, and displays the video stream, the model's output, and the processing FPS on a responsive web interface. All major settings can be configured dynamically through the web UI.
 
 ### Features
 <a id="features"></a>
-- **Multi-Source Input**: Supports real-time video capture from a webcam, looping playback from a video file (e.g., `.mp4`), or analysis of a static image.
+- **Multi-Source Input**: Supports real-time video capture from a webcam, looping playback from a video file, or analysis of a static image.
+- **Dynamic Web UI Configuration**: Easily switch between webcam and file input, change the file path, adjust the model's `max_new_tokens`, and modify the `prompt` directly from the web page, with changes taking effect instantly.
 - **Real-Time VLM Inference**: Continuously sends frames to the VLM for analysis and description generation.
 - **Web Interface**: A clean, responsive web UI that displays the visual source, real-time FPS, and the VLM's textual output side-by-side.
 - **Asynchronous Processing**: Utilizes multithreading to handle frame capture and VLM inference in parallel, maximizing performance.
-- **Configurable**: Easily configurable through variables at the top of the main script (`realtime_vlm_app.py`).
 
 ---
 
@@ -51,7 +51,6 @@ This project provides a complete web application that leverages a Vision Languag
 ├── templates/
 │   └── index.html          # HTML template for the web interface
 ├── requirements.txt        # Python dependencies
-├── pic.jpg                 # Example image file
 └── README.md               # This file
 ```
 
@@ -86,20 +85,7 @@ It is recommended to use a virtual environment (e.g., conda or venv).
     pip install -r requirements.txt
     ```
 4.  **Download the VLM model**: Ensure you have the `SmolVLM-256M-Instruct` model files in a directory named `SmolVLM-256M-Instruct` at the project root.
-
-### Configuration
-<a id="configuration"></a>
-Open `realtime_vlm_app.py` and modify the variables in the "Configuration" section as needed:
-
-```python
-# --- Configuration ---
-USE_WEBCAM = False  # Set to True for webcam, False for file input
-INPUT_SOURCE = "a.mp4" # Path to your video or image file
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_NAME = "./SmolVLM-256M-Instruct"
-PROMPT = "what you see? Answer in a word."
-# --- End Configuration ---
-```
+5.  **Prepare media files**: Place any video or image files you want to use (e.g., `pic.jpg`, `a.mp4`) in the project's root directory.
 
 ### Running the Application
 <a id="running-the-application"></a>
@@ -107,13 +93,26 @@ PROMPT = "what you see? Answer in a word."
     ```bash
     python realtime_vlm_app.py
     ```
-2.  **Open your browser**: Navigate to `http://127.0.0.1:5000` to view the application.
+2.  **Open your browser**: The terminal will display the access link. Navigate to `http://127.0.0.1:5000` to view the application.
+
+---
+
+## Configuration
+<a id="configuration"></a>
+Initial default settings are defined at the top of `realtime_vlm_app.py`. However, all key parameters can be adjusted dynamically via the settings panel on the web page itself.
+
+- **Use Webcam**: Check this box to switch to the webcam feed. The file path input will be disabled.
+- **Video/Image Path**: Specify the path to a video or image file located in the project directory.
+- **Max Tokens**: Control the maximum length of the VLM's generated response.
+- **Prompt**: Change the question or instruction given to the VLM.
+
+Changes are applied instantly upon modification.
 
 ---
 
 ## Demo
 <a id="demo"></a>
-The web interface displays the video feed on the left and the analysis results (FPS and VLM output) on the right. The layout is responsive and maintains a 2/3 to 1/3 ratio between the video and text sections.
+The web interface displays the video feed on the left and the analysis results on the right. Below the main view, a settings panel allows for dynamic configuration of the application.
 
 ![webpage](./webpage.png)
 
@@ -139,10 +138,10 @@ The web interface displays the video feed on the left and the analysis results (
     <ul>
       <li><a href="#环境设置">环境设置</a></li>
       <li><a href="#安装">安装</a></li>
-      <li><a href="#配置">配置</a></li>
       <li><a href="#运行应用">运行应用</a></li>
     </ul>
   </li>
+  <li><a href="#配置">配置</a></li>
   <li><a href="#演示">演示</a></li>
 </ul>
 
@@ -151,15 +150,15 @@ The web interface displays the video feed on the left and the analysis results (
 ## 介绍
 <a id="中文介绍"></a>
 
-本项目提供了一个完整的Web应用程序，它利用视觉语言模型（VLM）对视觉内容进行实时分析。该应用可以从网络摄像头、视频文件捕获视频，或使用静态图像作为输入。它会持续处理视觉输入，使用VLM生成文本描述，并在一个响应式的Web界面上并排显示视频流、模型的输出以及处理的FPS。
+本项目提供了一个完整的Web应用程序，它利用视觉语言模型（VLM）对视觉内容进行实时分析。该应用可以从网络摄像头、视频文件捕获视频，或使用静态图像作为输入。它会持续处理视觉输入，使用VLM生成文本描述，并在一个响应式的Web界面上并排显示视频流、模型的输出以及处理的FPS。所有主要设置都可以通过Web UI动态配置。
 
 ### 功能特性
 <a id="功能特性"></a>
-- **多源输入**: 支持从网络摄像头进行实时视频捕获、循环播放视频文件（如 `.mp4`），或分析静态图像。
+- **多源输入**: 支持从网络摄像头进行实时视频捕获、循环播放视频文件，或分析静态图像。
+- **动态Web UI配置**: 可在网页上轻松切换摄像头和文件输入、更改文件路径、调整模型的 `max_new_tokens` 以及修改 `prompt`，所有更改即时生效。
 - **实时VLM推理**: 持续将视频帧发送给VLM进行分析并生成描述。
 - **Web界面**: 一个简洁、响应式的Web UI，可并排显示视觉源、实时FPS和VLM的文本输出。
 - **异步处理**: 利用多线程并行处理帧捕获和VLM推理，以最大化性能。
-- **可配置**: 可通过主脚本 (`realtime_vlm_app.py`) 顶部的变量轻松进行配置。
 
 ---
 
@@ -172,7 +171,6 @@ The web interface displays the video feed on the left and the analysis results (
 ├── templates/
 │   └── index.html          # Web界面的HTML模板
 ├── requirements.txt        # Python依赖项
-├── pic.jpg                 # 示例图片
 └── README.md               # 本文件
 ```
 
@@ -207,20 +205,7 @@ The web interface displays the video feed on the left and the analysis results (
     pip install -r requirements.txt
     ```
 4.  **下载VLM模型**: 确保您已将 `SmolVLM-256M-Instruct` 模型文件放置在项目根目录下名为 `SmolVLM-256M-Instruct` 的文件夹中。
-
-### 配置
-<a id="配置"></a>
-打开 `realtime_vlm_app.py` 文件，并根据需要修改“Configuration”部分中的变量：
-
-```python
-# --- Configuration ---
-USE_WEBCAM = False  # 设置为 True 使用摄像头, False 使用文件输入
-INPUT_SOURCE = "a.mp4" # 你的视频或图片文件路径
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_NAME = "./SmolVLM-256M-Instruct"
-PROMPT = "what you see? Answer in a word."
-# --- End Configuration ---
-```
+5.  **准备媒体文件**: 将您希望使用的任何视频或图片文件（例如 `pic.jpg`, `a.mp4`）放置在项目根目录中。
 
 ### 运行应用
 <a id="运行应用"></a>
@@ -228,12 +213,25 @@ PROMPT = "what you see? Answer in a word."
     ```bash
     python realtime_vlm_app.py
     ```
-2.  **打开浏览器**: 访问 `http://127.0.0.1:5000` 查看应用。
+2.  **打开浏览器**: 终端会显示应用的访问链接。请访问 `http://127.0.0.1:5000` 查看应用。
+
+---
+
+## 配置
+<a id="配置"></a>
+初始的默认设置在 `realtime_vlm_app.py` 的顶部定义。然而，所有关键参数都可以在网页本身的设置面板中动态调整。
+
+- **Use Webcam**: 勾选此框以切换到摄像头画面。文件路径输入框将被禁用。
+- **Video/Image Path**: 指定位于项目目录中的视频或图片文件的路径。
+- **Max Tokens**: 控制VLM生成的回复的最大长度。
+- **Prompt**: 更改向VLM提出的问题或指令。
+
+所有更改在修改后会立刻生效。
 
 ---
 
 ## 演示
 <a id="演示"></a>
-Web界面在左侧显示视频，右侧显示分析结果（FPS和VLM输出）。该布局是响应式的，并保持视频和文本部分之间 2/3 到 1/3 的宽度比例。
+Web界面在左侧显示视频，右侧显示分析结果。在主视图下方，有一个设置面板，允许用户动态配置应用程序。
 
 ![webpage](./webpage.png)

@@ -7,22 +7,21 @@
         h1 { text-align: center; color: #1a1a1a; }
         #container {
             display: flex;
-            /* Removed flex-wrap to maintain side-by-side layout */
             justify-content: center;
-            align-items: stretch; /* Make columns of equal height */
+            align-items: stretch; 
             gap: 2em;
             margin-top: 2em;
         }
         #video-container {
-            flex: 2; /* Takes up 2/3 of the space */
+            flex: 2; 
             border: 2px solid #ccc;
             padding: 10px;
             background-color: #fff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            display: flex; /* Use flexbox to center the image */
+            display: flex; 
             justify-content: center;
             align-items: center;
-            min-width: 300px; /* Minimum width */
+            min-width: 300px; 
         }
         #video-container img {
             max-width: 100%;
@@ -30,9 +29,9 @@
             height: auto;
         }
         #data-container {
-            flex: 1; /* Takes up 1/3 of the space */
+            flex: 1; 
             padding: 20px;
-            min-width: 250px; /* Minimum width */
+            min-width: 250px; 
             border: 1px solid #ddd;
             background-color: #fff;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -41,37 +40,141 @@
         #fps { font-weight: bold; color: #008000; }
         #description {
             margin-top: 1em;
-            font-size: 1.1em;
+            font-size: 1.2em;
+            font-weight: bold;
             min-height: 100px;
             white-space: pre-wrap;
             background-color: #fafafa;
             padding: 15px;
             border: 1px solid #eee;
         }
-       footer {
-           text-align: center;
-           margin-top: 3em;
-           padding-top: 1em;
-           border-top: 1px solid #ddd;
-           color: #777;
-       }
+        footer {
+            text-align: center;
+            margin-top: 3em;
+            padding-top: 1em;
+            border-top: 1px solid #ddd;
+            color: #777;
+        }
+        #settings-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5em;
+            margin: 2em auto;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            max-width: 1080px;
+        }
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+        .setting-item label {
+            font-weight: bold;
+        }
+        .setting-item input[type="text"], .setting-item input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+        }
     </style>
 </head>
 <body>
     <h1>Real-time VLM Object Recognition</h1>
     <div id="container">
         <div id="video-container">
-            <img src="{{ url_for('video_feed') }}">
+            <img id="video-stream" src="{{ url_for('video_feed') }}">
         </div>
         <div id="data-container">
             <h2>Analysis Results</h2>
             <p><strong>FPS:</strong> <span id="fps">Loading...</span></p>
             <p><strong>VLM Output:</strong></p>
-            <div id="description" style="font-weight: bold; font-size: 1.2em;">Loading...</div>
+            <div id="description">Loading...</div>
         </div>
     </div>
 
+    <div id="settings-container">
+        <div class="setting-item">
+            <label for="use-webcam">Use Webcam:</label>
+            <input type="checkbox" id="use-webcam">
+        </div>
+        <div class="setting-item">
+            <label for="input-source">Video/Image Path:</label>
+            <input type="text" id="input-source">
+        </div>
+        <div class="setting-item">
+            <label for="max-tokens">Max Tokens:</label>
+            <input type="number" id="max-tokens" min="1" max="128">
+        </div>
+        <div class="setting-item">
+            <label for="prompt">Prompt:</label>
+            <input type="text" id="prompt">
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; STLIN256</p>
+    </footer>
+
     <script>
+        const useWebcamElem = document.getElementById('use-webcam');
+        const inputSourceElem = document.getElementById('input-source');
+        const maxTokensElem = document.getElementById('max-tokens');
+        const promptElem = document.getElementById('prompt');
+        const videoStreamElem = document.getElementById('video-stream');
+
+        function applySettings() {
+            const settings = {
+                use_webcam: useWebcamElem.checked,
+                input_source: inputSourceElem.value,
+                max_new_tokens: parseInt(maxTokensElem.value, 10),
+                prompt: promptElem.value
+            };
+
+            fetch('/update_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Settings updated:', data);
+                videoStreamElem.src = "{{ url_for('video_feed') }}?" + new Date().getTime();
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function toggleInputSource() {
+            inputSourceElem.disabled = useWebcamElem.checked;
+        }
+
+        // Load initial settings from server
+        window.addEventListener('load', () => {
+            fetch('/get_settings')
+                .then(response => response.json())
+                .then(data => {
+                    useWebcamElem.checked = data.USE_WEBCAM;
+                    inputSourceElem.value = data.INPUT_SOURCE;
+                    maxTokensElem.value = data.MAX_NEW_TOKENS;
+                    promptElem.value = data.PROMPT;
+                    toggleInputSource();
+                })
+                .catch(error => console.error('Error fetching settings:', error));
+            
+            updateVlmData();
+        });
+
+        // Add event listeners for instant apply
+        useWebcamElem.addEventListener('change', () => {
+            toggleInputSource();
+            applySettings();
+        });
+        inputSourceElem.addEventListener('change', applySettings);
+        maxTokensElem.addEventListener('change', applySettings);
+        promptElem.addEventListener('change', applySettings);
+
         function updateVlmData() {
             fetch('/vlm_data')
                 .then(response => response.json())
@@ -82,14 +185,7 @@
                 .catch(error => console.error('Error fetching VLM data:', error));
         }
 
-        // Update the data every second
         setInterval(updateVlmData, 1000);
-
-        // Initial call
-        window.onload = updateVlmData;
     </script>
-   <footer>
-       <p>&copy; <a href="https://github.com/stlin256/VLM_Live" target="_blank">STLIN256</a></p>
-   </footer>
 </body>
 </html>
