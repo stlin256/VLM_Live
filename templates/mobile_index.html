@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mobile VLM Streaming</title>
+    <style>
+        :root {
+            --glow-color-1: #00f2ff;
+            --glow-color-2: #ff00ff;
+            --glow-color-3: #8400ff;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #video-container {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        #results-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            box-sizing: border-box;
+            text-align: center;
+            z-index: 5;
+        }
+        #description {
+            font-size: 1.2em;
+            font-weight: bold;
+            min-height: 50px;
+            margin: 0;
+        }
+        #latency-label {
+            font-size: 0.9em;
+            color: #888;
+        }
+        #start-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            padding: 15px 30px;
+            cursor: pointer;
+            z-index: 10;
+            border-radius: 10px;
+            border: 1px solid #fff;
+            background-color: rgba(0,0,0,0.5);
+            color: #fff;
+        }
+        #lang-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1em;
+            padding: 8px 12px;
+            cursor: pointer;
+            z-index: 10;
+            border-radius: 8px;
+            background-color: rgba(0,0,0,0.5);
+            border: 1px solid #fff;
+        }
+        /* Final "SVG Stroke" Animation */
+        #animation-container svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        .border-rect, .light-rect {
+            fill: transparent;
+            stroke-width: 4px;
+            vector-effect: non-scaling-stroke; /* Keep stroke width consistent */
+        }
+        .border-rect {
+            stroke: var(--glow-color-1);
+            opacity: 0.3;
+        }
+        .light-rect {
+            stroke: var(--glow-color-2);
+            filter: blur(3px);
+            /* A dash of 25% length, followed by 75% gap */
+            stroke-dasharray: 0.25 0.75;
+            stroke-dashoffset: 0;
+            animation: trace 4s linear infinite;
+        }
+        .light-rect.chaser {
+            stroke: var(--glow-color-3);
+            animation-delay: -2s; /* Start halfway */
+        }
+        @keyframes trace {
+            from { stroke-dashoffset: 1; }
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="lang-toggle">中</div>
+    <div id="video-container">
+        <video id="video" autoplay playsinline></video>
+        <button id="start-button">Start Camera</button>
+        <div id="animation-container" style="display: none;">
+            <svg width="100%" height="100%" preserveAspectRatio="none">
+                <rect class="border-rect" x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)"/>
+                <rect class="light-rect" pathLength="1" x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)"/>
+                <rect class="light-rect chaser" pathLength="1" x="2" y="2" width="calc(100% - 4px)" height="calc(100% - 4px)"/>
+            </svg>
+        </div>
+    </div>
+    <div id="results-container">
+        <p id="description">Waiting for server...</p>
+        <p id="latency-label">Latency: ... ms</p>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const startButton = document.getElementById('start-button');
+        const descriptionElem = document.getElementById('description');
+        const latencyLabelElem = document.getElementById('latency-label');
+        const langToggle = document.getElementById('lang-toggle');
+        const animationContainer = document.getElementById('animation-container');
+        
+        let streamActive = false;
+        let currentLang = 'zh'; // Default to Chinese
+        let userId = null;
+
+        const translations = {
+            en: {
+                startButton: 'Start Camera',
+                waiting: 'Waiting for server...',
+                latency: 'Latency:',
+                errorCamera: 'Error: Could not access camera.',
+                connectionLost: 'Connection to server lost.',
+                langToggle: '中'
+            },
+            zh: {
+                startButton: '开启摄像头',
+                waiting: '等待服务器响应...',
+                latency: '延迟:',
+                errorCamera: '错误：无法访问摄像头。',
+                connectionLost: '与服务器断开连接。',
+                langToggle: 'EN'
+            }
+        };
+
+        function generateUserId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function updateUIText() {
+            const t = translations[currentLang];
+            startButton.innerText = t.startButton;
+            descriptionElem.innerText = t.waiting;
+            latencyLabelElem.innerText = `${t.latency} ... ms`;
+            langToggle.innerText = t.langToggle;
+        }
+
+        async function toggleLanguage() {
+            currentLang = (currentLang === 'en') ? 'zh' : 'en';
+            updateUIText();
+
+            const enableTranslation = (currentLang === 'zh');
+            try {
+                await fetch('/toggle_translation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ translate: enableTranslation, user_id: userId }),
+                });
+            } catch (error) {
+                console.error('Error toggling translation:', error);
+            }
+        }
+
+        function requestFullScreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`));
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            }
+        }
+
+        async function startCamera() {
+            requestFullScreen();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    }
+                });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    streamActive = true;
+                    startButton.style.display = 'none';
+                    animationContainer.style.display = 'block';
+                    setInterval(sendFrame, 500);
+                    setInterval(updateVlmData, 1000);
+                };
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                descriptionElem.innerText = `${translations[currentLang].errorCamera} ${err.message}`;
+            }
+        }
+
+        function sendFrame() {
+            if (!streamActive) return;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+            fetch('/upload_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataURL, user_id: userId }),
+            })
+            .catch(error => console.error('Error sending frame:', error));
+        }
+
+        function updateVlmData() {
+            if (!userId) return;
+            fetch(`/vlm_data?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    descriptionElem.innerText = data.description;
+                    latencyLabelElem.innerText = `${translations[currentLang].latency} ${data.latency} ms`;
+                })
+                .catch(error => {
+                    console.error('Error fetching VLM data:', error);
+                    descriptionElem.innerText = translations[currentLang].connectionLost;
+                });
+        }
+
+        // Initial setup
+        window.addEventListener('load', () => {
+            userId = generateUserId();
+            updateUIText();
+        });
+        startButton.addEventListener('click', startCamera);
+        langToggle.addEventListener('click', toggleLanguage);
+    </script>
+</body>
+</html>

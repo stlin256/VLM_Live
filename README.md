@@ -47,6 +47,7 @@ This project includes two inference engine implementations:
 1.  **`realtime_vlm_app.py`**: Uses the standard **PyTorch and Hugging Face Transformers** library. It's easy to set up and is ideal for environments with powerful GPUs.
 2.  **`realtime_vlm_app_llamacpp.py`**: A high-performance version using **`llama.cpp`** for inference, optimized for CPU and low-resource GPU environments.
 3.  **`realtime_vlm_app_llamacpp_translate.py`**: An extension of the `llama.cpp` version that includes an optional feature to **translate** the VLM's English output to Chinese in real-time using a secondary LLM.
+4.  **`mobile_vlm_app.py`**: A dedicated, mobile-optimized version that allows you to use your phone's camera to stream video directly to the server for analysis. It supports multiple concurrent users and features a dynamic UI.
 
 ---
 
@@ -58,8 +59,10 @@ This project includes two inference engine implementations:
 ├── realtime_vlm_app.py             # Main app (PyTorch version)
 ├── realtime_vlm_app_llamacpp.py    # High-performance app (llama.cpp version, no translation)
 ├── realtime_vlm_app_llamacpp_translate.py # High-performance app with real-time translation
+├── mobile_vlm_app.py               # Mobile-optimized version for phone camera streaming
 ├── templates/
-│   └── index.html                  # HTML template for the web interface
+│   ├── index.html                  # HTML template for the desktop web interface
+│   └── mobile_index.html           # HTML template for the mobile web interface
 ├── requirements.txt                # Python dependencies
 └── README.md                       # This file
 ```
@@ -115,7 +118,19 @@ It is recommended to use a virtual environment (e.g., conda or venv).
     ```bash
     python realtime_vlm_app_llamacpp_translate.py
     ```
-After starting, the terminal will display the access link. Navigate to `http://127.0.0.1:5000` to view the application.
+- **To run the mobile-optimized version**:
+    1.  **Generate SSL Certificate**: To access your phone's camera, the server must run over HTTPS. Generate a self-signed certificate by running this command once in your project directory:
+        ```bash
+        openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365 -subj "/CN=localhost"
+        ```
+    2.  **Run the server**:
+        ```bash
+        python mobile_vlm_app.py
+        ```
+    3.  **Access on your phone**: The terminal will show an `https://` link. Connect your phone to the same Wi-Fi network as your computer and navigate to that URL (e.g., `https://192.168.1.10:5000`).
+    4.  **Trust the Certificate**: Your phone's browser will show a security warning. This is expected. Click "Advanced" -> "Proceed to [your IP] (unsafe)" to continue. This step is necessary and safe in a local development environment.
+
+After starting, the terminal will display the access link. For desktop versions, navigate to `http://127.0.0.1:5000` to view the application.
 
 ---
 
@@ -190,6 +205,7 @@ The web interface displays the video feed on the left and the analysis results o
 1.  **`realtime_vlm_app.py`**: 使用标准的 **PyTorch 和 Hugging Face Transformers** 库。它易于设置，非常适合拥有强大GPU的环境。
 2.  **`realtime_vlm_app_llamacpp.py`**: 使用 **`llama.cpp`** 进行推理的高性能版本，为CPU和低资源GPU环境优化。
 3.  **`realtime_vlm_app_llamacpp_translate.py`**: `llama.cpp` 版本的扩展，集成了一个可选功能，可以使用一个次级LLM将VLM的英文输出**实时翻译**为中文。
+4.  **`mobile_vlm_app.py`**: 一个专门为移动端优化的版本，允许您使用手机摄像头直接将视频推流至服务器进行分析。它支持多用户并发使用，并拥有一个动态UI。
 
 ---
 
@@ -201,8 +217,10 @@ The web interface displays the video feed on the left and the analysis results o
 ├── realtime_vlm_app.py             # 主应用 (PyTorch 版本)
 ├── realtime_vlm_app_llamacpp.py    # 高性能应用 (llama.cpp 版本, 无翻译)
 ├── realtime_vlm_app_llamacpp_translate.py # 带实时翻译功能的高性能应用
+├── mobile_vlm_app.py               # 用于手机摄像头推流的移动优化版本
 ├── templates/
-│   └── index.html                  # Web界面的HTML模板
+│   ├── index.html                  # 桌面版Web界面的HTML模板
+│   └── mobile_index.html           # 移动版Web界面的HTML模板
 ├── requirements.txt                # Python依赖项
 └── README.md                       # 本文件
 ```
@@ -258,7 +276,19 @@ The web interface displays the video feed on the left and the analysis results o
     ```bash
     python realtime_vlm_app_llamacpp_translate.py
     ```
-启动后，终端会显示应用的访问链接。请访问 `http://127.0.0.1:5000` 查看应用。
+- **运行移动优化版本**:
+    1.  **生成SSL证书**: 为了能访问手机摄像头，服务器必须通过HTTPS运行。请在项目目录中运行一次以下命令来生成一个自签名证书：
+        ```bash
+        openssl req -x509 -newkey rsa:4096 -nodes -out cert.pem -keyout key.pem -days 365 -subj "/CN=localhost"
+        ```
+    2.  **运行服务器**:
+        ```bash
+        python mobile_vlm_app.py
+        ```
+    3.  **在手机上访问**: 终端会显示一个 `https://` 链接。请将您的手机与电脑连接到同一个Wi-Fi网络，并访问该URL（例如 `https://192.168.1.10:5000`）。
+    4.  **信任证书**: 您的手机浏览器会显示一个安全警告，这是正常现象。请点击“高级” -> “继续前往 [您的IP] (不安全)”来访问。在本地开发环境中，此操作是必要的且安全的。
+
+启动后，终端会显示应用的访问链接。对于桌面版，请访问 `http://127.0.0.1:5000` 查看应用。
 
 ---
 
