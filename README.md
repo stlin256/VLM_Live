@@ -150,9 +150,13 @@ Changes are applied instantly upon modification.
 
 ## Demo
 <a id="demo"></a>
-The web interface displays the video feed on the left and the analysis results on the right. Below the main view, a settings panel allows for dynamic configuration of the application.
+
 
 ![demo](./demo.png)
+
+The **desktop interface** displays the video feed on the left and the analysis results on the right. Below the main view, a settings panel allows for dynamic configuration of the application.
+
+The **mobile interface** is optimized for phone screens, featuring a fullscreen camera view with results overlaid at the bottom. It includes a language toggle and a dynamic, animated border indicating that the AI analysis is active.
 
 ---
 ---
@@ -308,6 +312,10 @@ The web interface displays the video feed on the left and the analysis results o
 
 ## 演示
 <a id="演示"></a>
-Web界面在左侧显示视频，右侧显示分析结果。在主视图下方，有一个设置面板，允许用户动态配置应用程序。
-
 ![demo](./demo.png)
+**桌面版界面**在左侧显示视频，右侧显示分析结果。在主视图下方，有一个设置面板，允许用户动态配置应用程序。
+
+**移动版界面**为手机屏幕进行了优化，采用全屏摄像头视图，并将分析结果叠加显示在底部。它包含一个语言切换按钮，以及一个动态的动画边框，用以指示AI正在进行分析。
+
+
+
