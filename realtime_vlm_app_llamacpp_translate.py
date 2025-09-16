@@ -32,6 +32,7 @@ app = Flask(__name__)
 
 # --- Llama.cpp VLM Initialization ---
 print(f"Loading VLM GGUF model from {config['MODEL_NAME']}...")
+print(f"--> VLM: Attempting to offload {config.get('N_GPU_LAYERS', 0)} layers to GPU.")
 chat_handler = Llava15ChatHandler(clip_model_path=config["MMPROJ_MODEL_PATH"], verbose=False)
 llm_vlm = Llama(
     model_path=config["MODEL_NAME"],
@@ -44,6 +45,7 @@ print("VLM GGUF model loaded successfully.")
 
 # --- Llama.cpp Translator Initialization ---
 print(f"Loading Translator GGUF model from {config['TRANSLATOR_MODEL_NAME']}...")
+print(f"--> Translator: Attempting to offload {config.get('TRANSLATOR_N_GPU_LAYERS', 0)} layers to GPU.")
 llm_translator = Llama(
     model_path=config["TRANSLATOR_MODEL_NAME"],
     n_ctx=512,
