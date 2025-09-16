@@ -152,7 +152,7 @@ Changes are applied instantly upon modification.
 <a id="demo"></a>
 The web interface displays the video feed on the left and the analysis results on the right. Below the main view, a settings panel allows for dynamic configuration of the application.
 
-![webpage](./webpage.png)
+![demo](./demo.png)
 
 ---
 ---
@@ -310,4 +310,4 @@ The web interface displays the video feed on the left and the analysis results o
 <a id="演示"></a>
 Web界面在左侧显示视频，右侧显示分析结果。在主视图下方，有一个设置面板，允许用户动态配置应用程序。
 
-![webpage](./webpage.png)
+![demo](./demo.png)
